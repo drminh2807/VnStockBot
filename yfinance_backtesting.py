@@ -4,67 +4,51 @@ from backtesting import Backtest, Strategy
 from backtesting.lib import crossover
 import pandas as pd
 
-# Tải dữ liệu từ Yahoo Finance
-data = yf.download('FPT.VN', start='2020-09-01', end='2024-09-01')
+# Tải dữ liệu từ Yahoo Finance cho FPT.VN
+data = yf.download('VCB.VN', start='2019-09-01', end='2024-09-01')
 
-# Chiến lược sử dụng chỉ báo Stochastic Oscillator
-class StochasticStrategy(Strategy):
-    oversold = 20  # Mức quá bán
-    overbought = 80  # Mức quá mua
-    take_profit = 0.15  # Chốt lãi 15%
-    stop_loss = 0.07  # Cắt lỗ 7%
+# Xử lý dữ liệu để phù hợp với backtesting.py
+data['Date'] = data.index
+data.index = range(len(data))  # Reset index để không dùng datetime làm index
+
+# Chiến lược kết hợp Stochastic, MACD và MA
+class MyStrategy(Strategy):
     def init(self):
-        # Tính toán Stochastic Oscillator
-        self.k, self.d = self.I(talib.STOCH, 
-                                self.data.High, 
-                                self.data.Low, 
-                                self.data.Close,
-                                fastk_period=14,  # Chu kỳ fastK
-                                slowk_period=3,   # Chu kỳ slowK
-                                slowk_matype=0,   # SMA
-                                slowd_period=3,   # Chu kỳ slowD
-                                slowd_matype=0)   # SMA
+        # MA-10
+        self.ma10 = self.I(talib.MA, self.data.Close, timeperiod=10)
         
+        # Stochastic 14-5
+        self.stoch_k, self.stoch_d = self.I(talib.STOCH, self.data.High, self.data.Low, self.data.Close, 
+                                            fastk_period=14, slowk_period=5, slowd_period=5)
+        
+        # MACD 8-17-9
+        self.macd, self.macdsignal, _ = self.I(talib.MACD, self.data.Close, fastperiod=8, slowperiod=17, signalperiod=9)
+
     def next(self):
-        # Điều kiện mua: cả %K và %D dưới mức oversold và không có vị thế
-        if self.k[-1] < self.oversold and self.d[-1] < self.oversold and not self.position:
-            # Mua số cổ phiếu tối đa có thể chia hết cho 100
-            size = self.equity // self.data.Close[-1] // 100 * 100
-            if size > 0:
-                self.buy(size=size)
-                print(f'{self.data.index[-1]} - Giá: {self.data.Close[-1]:.2f} - Số lượng: {size} - Mua')
-        
-        if self.position:
-            # Chốt lãi nếu lợi nhuận đạt 15%
-            # if self.position.pl_pct >= self.take_profit:
-            #     self.sell(size=self.position.size)
-            #     print(f'{self.data.index[-1]} - Giá: {self.data.Close[-1]:.2f} - PnL: {self.position.pl:.0f} - BÁN (chốt lãi)')
+        # Điều kiện mua: cả ba chỉ báo đều có tín hiệu mua
+        if (self.data.Close[-1] > self.ma10[-1] and    # Giá đóng cửa > MA-10
+            self.stoch_k[-1] > self.stoch_d[-1] and    # Stochastic K > D
+            self.macd[-1] > self.macdsignal[-1]) and not self.position:      # MACD > Signal
+            # Tính số lượng cổ phiếu mua (làm tròn lô 100)
+            qty = int(self.equity // self.data.Close[-1] // 100 * 100)
+            if qty > 0:
+                self.buy(size=qty)
+                print(f"BUY at {self.data['Date'][-1]}: Price: {self.data.Close[-1]}, Qty: {qty}")
 
-            # # Cắt lỗ nếu lỗ vượt quá 7%
-            # elif self.position.pl <= -self.stop_loss:
-            #     self.sell(size=self.position.size)
-            #     print(f'{self.data.index[-1]} - Giá: {self.data.Close[-1]:.2f} - PnL: {self.position.pl:.0f} - BÁN (cắt lỗ):')
+        # Điều kiện bán: cả ba chỉ báo đều có tín hiệu bán
+        elif (self.data.Close[-1] < self.ma10[-1] and   # Giá đóng cửa < MA-10
+              self.stoch_k[-1] < self.stoch_d[-1] and   # Stochastic K < D
+              self.macd[-1] < self.macdsignal[-1]) and self.position:     # MACD < Signal
+            self.sell(size=self.position.size)
+            print(f"SELL at {self.data['Date'][-1]}: Price: {self.data.Close[-1]}, Qty: {self.position.size}, Profit: {self.position.pl:.0f} - {self.position.pl_pct*100:.2f}%")
 
-            # Bán theo tín hiệu overbought
-            if self.k[-1] > self.overbought and self.d[-1] > self.overbought:
-                self.sell(size=self.position.size)
-                # print(f'{self.data.index[-1]} - Giá: {self.data.Close[-1]:.2f} - PnL: {self.position.pl:.0f} - BÁN (quá mua): ')
-                print(f'{self.data.index[-1]} - Giá: {self.data.Close[-1]:.2f} - PnL: {self.position.pl_pct*100:.2f} {self.position.pl:.0f} - Bán')
-
-# Thực hiện backtest
-bt = Backtest(
-    data,
-    StochasticStrategy,
-    cash=100_000_000,  # 100 triệu tiền ban đầu
-    commission=0,  # Không tính phí giao dịch
-    trade_on_close=True  # Giao dịch tại giá đóng cửa của ngày
-)
+# Cài đặt Backtest
+bt = Backtest(data, MyStrategy, cash=100_000_000, commission=0, trade_on_close=True)
 
 # Chạy backtest
-result = bt.run()
+stats = bt.run()
 
-# In kết quả tổng quan
-print(result)
+# In ra kết quả thống kê
+print(stats)
 
-# Hiển thị biểu đồ kết quả
-# bt.plot()
+bt.plot()
