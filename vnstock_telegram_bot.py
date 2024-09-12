@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 import talib
 import json
 import logging
-from functools import wraps
+from backtesting import Backtest, Strategy
+import pandas as pd
+from bokeh.io import export_png
 
 # Load environment variables
 load_dotenv()
@@ -31,8 +33,7 @@ logger = logging.getLogger(__name__)
 # Global variables
 STATE_FILE = 'bot_state.json'
 bot_state = {
-    'watchlist': set(),
-    'channel_id': None
+    'channels': {}  # Each channel will have its own watchlist
 }
 
 # Load state from file
@@ -41,9 +42,8 @@ def load_state():
     try:
         with open(STATE_FILE, 'r') as f:
             data = json.load(f)
-            bot_state['watchlist'] = set(data.get('watchlist', []))
-            bot_state['channel_id'] = data.get('channel_id')
-        logger.info(f"State loaded: watchlist size {len(bot_state['watchlist'])}, channel ID {bot_state['channel_id']}")
+            bot_state['channels'] = {int(k): {'watchlist': set(v['watchlist'])} for k, v in data.get('channels', {}).items()}
+        logger.info(f"State loaded: {len(bot_state['channels'])} channels")
     except FileNotFoundError:
         logger.info("No existing state found. Starting with empty state.")
 
@@ -51,38 +51,56 @@ def load_state():
 def save_state():
     with open(STATE_FILE, 'w') as f:
         json.dump({
-            'watchlist': list(bot_state['watchlist']),
-            'channel_id': bot_state['channel_id']
+            'channels': {str(k): {'watchlist': list(v['watchlist'])} for k, v in bot_state['channels'].items()}
         }, f)
-    logger.info(f"State saved: watchlist size {len(bot_state['watchlist'])}, channel ID {bot_state['channel_id']}")
+    logger.info(f"State saved: {len(bot_state['channels'])} channels")
 
 # Function to add a symbol to the watchlist
-def add_symbol(symbol):
-    bot_state['watchlist'].add(symbol.upper())
+def add_symbol(channel_id, symbol):
+    if channel_id not in bot_state['channels']:
+        bot_state['channels'][channel_id] = {'watchlist': set()}
+    bot_state['channels'][channel_id]['watchlist'].add(symbol.upper())
     save_state()
-    logger.info(f"Symbol added to watchlist: {symbol.upper()}")
+    logger.info(f"Symbol {symbol.upper()} added to watchlist for channel {channel_id}")
 
 # Function to remove a symbol from the watchlist
-def remove_symbol(symbol):
-    bot_state['watchlist'].discard(symbol.upper())
-    save_state()
-    logger.info(f"Symbol removed from watchlist: {symbol.upper()}")
+def remove_symbol(channel_id, symbol):
+    if channel_id in bot_state['channels']:
+        bot_state['channels'][channel_id]['watchlist'].discard(symbol.upper())
+        save_state()
+        logger.info(f"Symbol {symbol.upper()} removed from watchlist for channel {channel_id}")
 
 # Function to get the watchlist
-def get_watchlist():
-    return list(bot_state['watchlist'])
+def get_watchlist(channel_id):
+    return list(bot_state['channels'].get(channel_id, {}).get('watchlist', set()))
 
-def update_channel_id(func):
-    @wraps(func)
-    def wrapper(message, *args, **kwargs):
-        if 'channel_id' not in bot_state or bot_state['channel_id'] != message.chat.id:
-            bot_state['channel_id'] = message.chat.id
-            save_state()
-            bot.reply_to(message, f"Channel ID updated to {bot_state['channel_id']}. You will receive updates here.")
-            logger.info(f"Channel ID updated to {bot_state['channel_id']} for user {message.from_user.id}")
-        return func(message, *args, **kwargs)
-    return wrapper
+class MyStrategy(Strategy):
+    def init(self):
+        # MA-10
+        self.ma10 = self.I(talib.MA, self.data.Close, timeperiod=10)
+        
+        # Stochastic 14-5
+        self.stoch_k, self.stoch_d = self.I(talib.STOCH, self.data.High, self.data.Low, self.data.Close, 
+                                            fastk_period=14, slowk_period=5, slowd_period=5)
+        
+        # MACD 8-17-9
+        self.macd, self.macdsignal, _ = self.I(talib.MACD, self.data.Close, fastperiod=8, slowperiod=17, signalperiod=9)
 
+    def next(self):
+        # Điều kiện mua: cả ba chỉ báo đều có tín hiệu mua
+        if (self.data.Close[-1] > self.ma10[-1] and    # Giá đóng cửa > MA-10
+            self.stoch_k[-1] > self.stoch_d[-1] and    # Stochastic K > D
+            self.macd[-1] > self.macdsignal[-1]) and not self.position:      # MACD > Signal
+            # Tính số lượng cổ phiếu mua (làm tròn lô 100)
+            qty = int(self.equity // self.data.Close[-1] // 100 * 100)
+            if qty > 0:
+                self.buy(size=qty)
+
+        # Điều kiện bán: cả ba chỉ báo đều có tín hiệu bán
+        elif (self.data.Close[-1] < self.ma10[-1] and   # Giá đóng cửa < MA-10
+              self.stoch_k[-1] < self.stoch_d[-1] and   # Stochastic K < D
+              self.macd[-1] < self.macdsignal[-1]) and self.position:     # MACD < Signal
+            self.sell(size=self.position.size)
 # Command handler for /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -97,86 +115,75 @@ def send_help(message):
 /remove <symbol> - Remove a stock symbol from your watchlist
 /list - List all symbols in your watchlist
 /today - Get today's recommendations for your watchlist
+/backtest <symbol> <duration> - Run a backtest for a symbol (e.g., /backtest VNM 1y)
 /help - Show this help message
     """
     bot.reply_to(message, help_text)
 
 # Command handler for /add
 @bot.message_handler(commands=['add'])
-@update_channel_id
 def add_stock(message):
     try:
         _, symbol = message.text.split(maxsplit=1)
         symbol = symbol.upper()
-        if symbol not in bot_state['watchlist']:
-            add_symbol(symbol)
+        channel_id = message.chat.id
+        if symbol not in get_watchlist(channel_id):
+            add_symbol(channel_id, symbol)
             bot.reply_to(message, f"Added {symbol} to the watchlist.")
-            logger.info(f"User {message.from_user.id} added {symbol} to watchlist")
-            send_watchlist_update_to_channel("added", symbol)
+            logger.info(f"User {message.from_user.id} added {symbol} to watchlist in channel {channel_id}")
             
             # Get and send recommendation for the newly added symbol
             recommendation = get_recommendation(symbol)
-            bot.send_message(message.chat.id, f"Current recommendation for {symbol}:\n{recommendation}")
-            logger.info(f"Sent recommendation for {symbol} to user {message.from_user.id}")
+            bot.send_message(channel_id, f"Current recommendation for {symbol}:\n{recommendation}")
+            logger.info(f"Sent recommendation for {symbol} to channel {channel_id}")
         else:
             bot.reply_to(message, f"{symbol} is already in the watchlist.")
-            logger.info(f"User {message.from_user.id} attempted to add existing symbol {symbol}")
+            logger.info(f"User {message.from_user.id} attempted to add existing symbol {symbol} in channel {channel_id}")
     except ValueError:
         bot.reply_to(message, "Please provide a symbol. Usage: /add <symbol>")
         logger.warning(f"User {message.from_user.id} failed to add symbol (invalid input)")
 
 # Command handler for /remove
 @bot.message_handler(commands=['remove'])
-@update_channel_id
 def remove_stock(message):
     try:
         _, symbol = message.text.split(maxsplit=1)
         symbol = symbol.upper()
-        if symbol in bot_state['watchlist']:
-            remove_symbol(symbol)
+        channel_id = message.chat.id
+        if symbol in get_watchlist(channel_id):
+            remove_symbol(channel_id, symbol)
             bot.reply_to(message, f"Removed {symbol} from the watchlist.")
-            logger.info(f"User {message.from_user.id} removed {symbol} from watchlist")
-            send_watchlist_update_to_channel("removed", symbol)
+            logger.info(f"User {message.from_user.id} removed {symbol} from watchlist in channel {channel_id}")
         else:
             bot.reply_to(message, f"{symbol} is not in the watchlist.")
-            logger.info(f"User {message.from_user.id} attempted to remove non-existent symbol {symbol}")
+            logger.info(f"User {message.from_user.id} attempted to remove non-existent symbol {symbol} in channel {channel_id}")
     except ValueError:
         bot.reply_to(message, "Please provide a symbol. Usage: /remove <symbol>")
         logger.warning(f"User {message.from_user.id} failed to remove symbol (invalid input)")
 
 # Command handler for /list
 @bot.message_handler(commands=['list'])
-@update_channel_id
 def list_stocks(message):
-    if bot_state['watchlist']:
-        bot.reply_to(message, "Current watchlist:\n" + "\n".join(get_watchlist()))
+    channel_id = message.chat.id
+    watchlist = get_watchlist(channel_id)
+    if watchlist:
+        bot.reply_to(message, "Current watchlist:\n" + "\n".join(watchlist))
     else:
         bot.reply_to(message, "The watchlist is empty.")
 
 # Command handler for /today
 @bot.message_handler(commands=['today'])
-@update_channel_id
 def send_today_recommendations(message):
-    if bot_state['watchlist']:
-        recommendations = [get_recommendation(symbol) for symbol in get_watchlist()]
+    channel_id = message.chat.id
+    watchlist = get_watchlist(channel_id)
+    if watchlist:
+        recommendations = [get_recommendation(symbol) for symbol in watchlist]
         message_text = "📊 Today's recommendations:\n" + "\n".join(recommendations)
         bot.reply_to(message, message_text)
-        logger.info(f"Sent today's recommendations to user {message.from_user.id}")
+        logger.info(f"Sent today's recommendations to channel {channel_id}")
     else:
         bot.reply_to(message, "The watchlist is empty. Use /add <symbol> to add stocks.")
-        logger.info(f"User {message.from_user.id} requested recommendations but watchlist is empty")
-
-# Modify send_watchlist_update_to_channel function
-def send_watchlist_update_to_channel(action, symbol):
-    if bot_state['channel_id']:
-        message = f"Watchlist {action}: {symbol}"
-        try:
-            bot.send_message(bot_state['channel_id'], message)
-            logger.info(f"Sent watchlist update to channel: {message}")
-        except telebot.apihelper.ApiException as e:
-            logger.error(f"Failed to send message to channel: {e}")
-    else:
-        logger.warning("Attempted to send watchlist update, but channel ID is not set")
+        logger.info(f"User {message.from_user.id} requested recommendations but watchlist is empty in channel {channel_id}")
 
 # Function to get stock recommendation
 def get_recommendation(symbol):
@@ -204,17 +211,80 @@ def get_recommendation(symbol):
 
     return f"{rec_emoji} {symbol}: {last_price:.2f} {change_emoji} ({last_change_percent:.2f}%) - {recommendation}"
 
-def calculate_recommendation(data):
+def calculate_indicators(data):
     ma10 = talib.MA(data.close, timeperiod=10)
     stoch_k, stoch_d = talib.STOCH(data.high, data.low, data.close, fastk_period=14, slowk_period=5, slowd_period=5)
     macd, macdsignal, _ = talib.MACD(data.close, fastperiod=8, slowperiod=17, signalperiod=9)
+    return ma10, stoch_k, stoch_d, macd, macdsignal
 
-    if (data.close.iloc[-1] > ma10.iloc[-1] and stoch_k.iloc[-1] > stoch_d.iloc[-1] and macd.iloc[-1] > macdsignal.iloc[-1]):
+def generate_signals(data, ma10, stoch_k, stoch_d, macd, macdsignal):
+    buy_signal = (data.close > ma10) & (stoch_k > stoch_d) & (macd > macdsignal)
+    sell_signal = (data.close < ma10) & (stoch_k < stoch_d) & (macd < macdsignal)
+    return buy_signal, sell_signal
+
+def calculate_recommendation(data):
+    ma10, stoch_k, stoch_d, macd, macdsignal = calculate_indicators(data)
+    buy_signal, sell_signal = generate_signals(data, ma10, stoch_k, stoch_d, macd, macdsignal)
+
+    if buy_signal.iloc[-1]:
         return "Buy"
-    elif (data.close.iloc[-1] < ma10.iloc[-1] and stoch_k.iloc[-1] < stoch_d.iloc[-1] and macd.iloc[-1] < macdsignal.iloc[-1]):
+    elif sell_signal.iloc[-1]:
         return "Sell"
     else:
         return "Hold"
+
+# Command handler for /backtest
+@bot.message_handler(commands=['backtest'])
+def backtest_stock(message):
+    try:
+        _, symbol, duration = message.text.split(maxsplit=2)
+        symbol = symbol.upper()
+        channel_id = message.chat.id
+        
+        bot.reply_to(message, f"Running backtest for {symbol} over {duration}...")
+        bt = run_backtest(symbol, duration)
+        result = bt.run()
+        bot.send_message(channel_id, str(result))
+        send_backtest_plot(bt, symbol, channel_id)
+        logger.info(f"Sent backtest results for {symbol} over {duration} to channel {channel_id}")
+    except ValueError:
+        bot.reply_to(message, "Please provide a symbol and duration. Usage: /backtest <symbol> <duration>")
+        logger.warning(f"User {message.from_user.id} failed to run backtest (invalid input)")
+
+def send_backtest_plot(bt, symbol, chat_id):
+    # Create a plot of the stats
+    fig = bt.plot(open_browser=False)
+    
+    # Save the plot as a PNG file
+    png_file = f"{symbol}_backtest.png"
+    export_png(fig, filename=png_file)
+
+    
+    # Send the PNG file to Telegram
+    with open(png_file, 'rb') as photo:
+        bot.send_photo(chat_id, photo)
+    
+    # Remove the temporary file
+    os.remove(png_file)
+
+def run_backtest(symbol, duration):
+    # Convert duration to days
+    duration_map = {'y': 365, 'm': 30, 'w': 7, 'd': 1}
+    days = int(duration[:-1]) * duration_map[duration[-1].lower()]
+    
+    stock = Vnstock().stock(symbol=symbol, source='VCI')
+    end_date = datetime.now() - timedelta(days=1)
+    start_date = end_date - timedelta(days=days)
+    data_vnstock = stock.quote.history(start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
+    
+    if data_vnstock.empty:
+        return f"No data available for {symbol}"
+
+    # Prepare data for backtesting
+    data = data_vnstock.rename(str.capitalize, axis='columns')
+    data.index = pd.to_datetime(data["Time"])
+
+    return Backtest(data, MyStrategy, cash=100_000_000, commission=0)
 
 # Function to send daily recommendations
 def send_daily_recommendations():
@@ -222,16 +292,19 @@ def send_daily_recommendations():
     now = datetime.now(vietnam_tz)
     
     logger.info("Starting daily recommendations process")
-    if now.weekday() < 5 and bot_state['watchlist'] and bot_state['channel_id']:
-        recommendations = [get_recommendation(symbol) for symbol in get_watchlist()]
-        message = "📊 Daily recommendations:\n" + "\n".join(recommendations)
-        try:
-            bot.send_message(bot_state['channel_id'], message)
-            logger.info(f"Sent daily recommendations to channel {bot_state['channel_id']}")
-        except telebot.apihelper.ApiException as e:
-            logger.error(f"Failed to send daily recommendations to channel: {e}")
+    if now.weekday() < 5:
+        for channel_id, channel_data in bot_state['channels'].items():
+            watchlist = channel_data['watchlist']
+            if watchlist:
+                recommendations = [get_recommendation(symbol) for symbol in watchlist]
+                message = "📊 Daily recommendations:\n" + "\n".join(recommendations)
+                try:
+                    bot.send_message(channel_id, message)
+                    logger.info(f"Sent daily recommendations to channel {channel_id}")
+                except telebot.apihelper.ApiException as e:
+                    logger.error(f"Failed to send daily recommendations to channel {channel_id}: {e}")
     else:
-        logger.info("Skipped daily recommendations (weekend, empty watchlist, or channel ID not set)")
+        logger.info("Skipped daily recommendations (weekend)")
 
 # Schedule the daily recommendations
 schedule.every().day.at("08:00").do(send_daily_recommendations)
