@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import talib
 import json
 import logging
+from functools import wraps
 
 # Load environment variables
 load_dotenv()
@@ -71,16 +72,16 @@ def remove_symbol(symbol):
 def get_watchlist():
     return list(bot_state['watchlist'])
 
-# Function to set the channel ID
-def set_channel_id(message):
-    if message.forward_from_chat and message.forward_from_chat.type == 'channel':
-        bot_state['channel_id'] = message.forward_from_chat.id
-        save_state()
-        bot.reply_to(message, f"Channel ID set successfully: {bot_state['channel_id']}")
-        logger.info(f"Channel ID set to {bot_state['channel_id']}")
-    else:
-        bot.reply_to(message, "Please forward a message from the channel to set the channel ID.")
-        logger.warning("Failed to set channel ID: Invalid forwarded message")
+def update_channel_id(func):
+    @wraps(func)
+    def wrapper(message, *args, **kwargs):
+        if 'channel_id' not in bot_state or bot_state['channel_id'] != message.chat.id:
+            bot_state['channel_id'] = message.chat.id
+            save_state()
+            bot.reply_to(message, f"Channel ID updated to {bot_state['channel_id']}. You will receive updates here.")
+            logger.info(f"Channel ID updated to {bot_state['channel_id']} for user {message.from_user.id}")
+        return func(message, *args, **kwargs)
+    return wrapper
 
 # Command handler for /start
 @bot.message_handler(commands=['start'])
@@ -102,6 +103,7 @@ def send_help(message):
 
 # Command handler for /add
 @bot.message_handler(commands=['add'])
+@update_channel_id
 def add_stock(message):
     try:
         _, symbol = message.text.split(maxsplit=1)
@@ -125,6 +127,7 @@ def add_stock(message):
 
 # Command handler for /remove
 @bot.message_handler(commands=['remove'])
+@update_channel_id
 def remove_stock(message):
     try:
         _, symbol = message.text.split(maxsplit=1)
@@ -143,6 +146,7 @@ def remove_stock(message):
 
 # Command handler for /list
 @bot.message_handler(commands=['list'])
+@update_channel_id
 def list_stocks(message):
     if bot_state['watchlist']:
         bot.reply_to(message, "Current watchlist:\n" + "\n".join(get_watchlist()))
@@ -151,6 +155,7 @@ def list_stocks(message):
 
 # Command handler for /today
 @bot.message_handler(commands=['today'])
+@update_channel_id
 def send_today_recommendations(message):
     if bot_state['watchlist']:
         recommendations = [get_recommendation(symbol) for symbol in get_watchlist()]
@@ -160,17 +165,6 @@ def send_today_recommendations(message):
     else:
         bot.reply_to(message, "The watchlist is empty. Use /add <symbol> to add stocks.")
         logger.info(f"User {message.from_user.id} requested recommendations but watchlist is empty")
-
-# Command handler for /setchannel
-@bot.message_handler(commands=['setchannel'])
-def handle_set_channel(message):
-    bot.reply_to(message, "Please forward a message from the channel to set the channel ID.")
-
-# Handler for forwarded messages
-@bot.message_handler(content_types=['text'])
-def handle_forwarded_message(message):
-    if message.forward_from_chat:
-        set_channel_id(message)
 
 # Modify send_watchlist_update_to_channel function
 def send_watchlist_update_to_channel(action, symbol):
