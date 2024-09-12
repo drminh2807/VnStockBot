@@ -113,12 +113,20 @@ def send_help(message):
     help_text = """
 📊 Available commands:
 Note: The bot will automatically send recommendations for your watchlist every working day at 8:00 AM.
+
 /add <symbol> - Add a stock symbol to your watchlist
 /remove <symbol> - Remove a stock symbol from your watchlist
 /list - List all symbols in your watchlist
 /today - Get today's recommendations for your watchlist
 /backtest <symbol> <duration> - Run a backtest for a symbol (e.g., /backtest VNM 1y)
+/overview <symbol> - Get the overview of a symbol (e.g., /overview VNM)
 /help - Show this help message
+
+Durations for backtest:
+- y: years (e.g., 1y, 2y)
+- m: months (e.g., 6m, 12m)
+- w: weeks (e.g., 4w, 8w)
+- d: days (e.g., 30d, 60d)
     """
     bot.reply_to(message, help_text)
 
@@ -172,6 +180,12 @@ def list_stocks(message):
         bot.reply_to(message, "Current watchlist:\n" + "\n".join(watchlist))
     else:
         bot.reply_to(message, "The watchlist is empty.")
+
+@bot.message_handler(commands=['overview'])
+def overview_command(message):
+    symbol = message.text.split()[1]
+    overview = overview_command(symbol)
+    bot.reply_to(message, overview)
 
 # Command handler for /today
 @bot.message_handler(commands=['today'])
@@ -243,7 +257,7 @@ def backtest_stock(message):
         symbol = symbol.upper()
         channel_id = message.chat.id
         
-        bot.reply_to(message, f"Running backtest for {symbol} over {duration}...")
+        bot.reply_to(message, f"Đang chạy backtest cho {symbol} trong khoảng thời gian {duration}...")
         bt = run_backtest(symbol, duration)
         result = bt.run()
         
@@ -252,56 +266,58 @@ def backtest_stock(message):
         bot.send_message(channel_id, beautified_results)
         
         send_backtest_plot(bt, symbol, channel_id)
-        logger.info(f"Sent backtest results for {symbol} over {duration} to channel {channel_id}")
+        logger.info(f"Đã gửi kết quả backtest cho {symbol} trong khoảng thời gian {duration} đến kênh {channel_id}")
     except ValueError:
-        bot.reply_to(message, "Please provide a symbol and duration. Usage: /backtest <symbol> <duration>")
-        logger.warning(f"User {message.from_user.id} failed to run backtest (invalid input)")
+        bot.reply_to(message, "Vui lòng cung cấp mã cổ phiếu và khoảng thời gian. Cách sử dụng: /backtest <mã cổ phiếu> <khoảng thời gian>")
+        logger.warning(f"Người dùng {message.from_user.id} không thể chạy backtest (đầu vào không hợp lệ)")
 
 def beautify_backtest_results(result):
     def format_duration(duration):
-        return str(duration).split()[0] + ' days'
+        return str(duration).split()[0] + ' ngày'
 
     # Extract relevant metrics and group them into sections
     sections = [
-        ("📅 Overview", [
-            ('Start', result['Start'].strftime('%Y-%m-%d')),
-            ('End', result['End'].strftime('%Y-%m-%d')),
-            ('Duration', format_duration(result['Duration'])),
-            ('Exposure Time', f"{result['Exposure Time [%]']:.2f}%"),
+        ("📅 Thông tin backtest", [
+            ('Vốn ban đầu', '100,000,000 đ'),
+            ('Hoa hồng', '0 đ'),
+            ('Bắt đầu', result['Start'].strftime('%Y-%m-%d')),
+            ('Kết thúc', result['End'].strftime('%Y-%m-%d')),
+            ('Thời gian', format_duration(result['Duration'])),
+            ('Thời gian giao dịch', f"{result['Exposure Time [%]']:.2f}%"),
         ]),
-        ("💰 Performance", [
-            ('Equity Final', f"{result['Equity Final [$]']:,.0f} đ"),
-            ('Equity Peak', f"{result['Equity Peak [$]']:,.0f} đ"),
-            ('Return', f"{result['Return [%]']:.2f}%"),
-            ('Buy & Hold Return', f"{result['Buy & Hold Return [%]']:.2f}%"),
-            ('Return (Ann.)', f"{result['Return (Ann.) [%]']:.2f}%"),
-            ('Volatility (Ann.)', f"{result['Volatility (Ann.) [%]']:.2f}%"),
+        ("💰 Hiệu suất", [
+            ('Vốn cuối cùng', f"{result['Equity Final [$]']:,.0f} đ"),
+            ('Vốn cao nhất', f"{result['Equity Peak [$]']:,.0f} đ"),
+            ('Lợi nhuận', f"{result['Return [%]']:.2f}%"),
+            ('Lợi nhuận Mua & Giữ', f"{result['Buy & Hold Return [%]']:.2f}%"),
+            ('Lợi nhuận hàng năm', f"{result['Return (Ann.) [%]']:.2f}%"),
+            ('Biến động hàng năm', f"{result['Volatility (Ann.) [%]']:.2f}%"),
         ]),
-        ("📊 Ratios", [
-            ('Sharpe Ratio', f"{result['Sharpe Ratio']:.2f}"),
-            ('Sortino Ratio', f"{result['Sortino Ratio']:.2f}"),
-            ('Calmar Ratio', f"{result['Calmar Ratio']:.2f}"),
+        ("📊 Tỷ lệ", [
+            ('Tỷ lệ Sharpe', f"{result['Sharpe Ratio']:.2f}"),
+            ('Tỷ lệ Sortino', f"{result['Sortino Ratio']:.2f}"),
+            ('Tỷ lệ Calmar', f"{result['Calmar Ratio']:.2f}"),
         ]),
-        ("📉 Drawdowns", [
-            ('Max. Drawdown', f"{result['Max. Drawdown [%]']:.2f}%"),
-            ('Avg. Drawdown', f"{result['Avg. Drawdown [%]']:.2f}%"),
-            ('Max. Drawdown Duration', format_duration(result['Max. Drawdown Duration'])),
-            ('Avg. Drawdown Duration', format_duration(result['Avg. Drawdown Duration'])),
+        ("📉 Rủi ro", [
+            ('Rủi ro tối đa', f"{result['Max. Drawdown [%]']:.2f}%"),
+            ('Rủi ro trung bình', f"{result['Avg. Drawdown [%]']:.2f}%"),
+            ('Thời gian rủi ro tối đa', format_duration(result['Max. Drawdown Duration'])),
+            ('Thời gian rủi ro trung bình', format_duration(result['Avg. Drawdown Duration'])),
         ]),
-        ("🔄 Trades", [
-            ('# Trades', result['# Trades']),
-            ('Win Rate', f"{result['Win Rate [%]']:.2f}%"),
-            ('Best Trade', f"{result['Best Trade [%]']:.2f}%"),
-            ('Worst Trade', f"{result['Worst Trade [%]']:.2f}%"),
-            ('Avg. Trade', f"{result['Avg. Trade [%]']:.2f}%"),
-            ('Max. Trade Duration', format_duration(result['Max. Trade Duration'])),
-            ('Avg. Trade Duration', format_duration(result['Avg. Trade Duration'])),
+        ("🔄 Giao dịch", [
+            ('Số lượng giao dịch', result['# Trades']),
+            ('Tỷ lệ thắng', f"{result['Win Rate [%]']:.2f}%"),
+            ('Giao dịch tốt nhất', f"{result['Best Trade [%]']:.2f}%"),
+            ('Giao dịch tệ nhất', f"{result['Worst Trade [%]']:.2f}%"),
+            ('Giao dịch trung bình', f"{result['Avg. Trade [%]']:.2f}%"),
+            ('Thời gian giao dịch tối đa', format_duration(result['Max. Trade Duration'])),
+            ('Thời gian giao dịch trung bình', format_duration(result['Avg. Trade Duration'])),
         ]),
-        ("📈 Additional Metrics", [
-            ('Profit Factor', f"{result['Profit Factor']:.2f}"),
-            ('Expectancy', f"{result['Expectancy [%]']:.2f}%"),
+        ("📈 Chỉ số bổ sung", [
+            ('Hệ số lợi nhuận', f"{result['Profit Factor']:.2f}"),
+            ('Kỳ vọng', f"{result['Expectancy [%]']:.2f}%"),
             ('SQN', f"{result['SQN']:.2f}"),
-            ('Kelly Criterion', f"{result['Kelly Criterion']:.4f}"),
+            ('Tiêu chí Kelly', f"{result['Kelly Criterion']:.4f}"),
         ]),
     ]
     
@@ -366,6 +382,50 @@ def send_daily_recommendations():
                     logger.error(f"Failed to send daily recommendations to channel {channel_id}: {e}")
     else:
         logger.info("Skipped daily recommendations (weekend)")
+
+def overview_command(symbol):
+    company = Vnstock().stock(symbol=symbol, source='TCBS').company
+    overview_data = company.overview()
+
+    # Define Vietnamese labels
+    vietnamese_labels = {
+        'exchange': 'Sàn',
+        'industry': 'Ngành',
+        'company_type': 'Loại công ty',
+        'no_shareholders': 'Số cổ đông',
+        'foreign_percent': 'Tỷ lệ sở hữu nước ngoài',
+        'outstanding_share': 'Cổ phiếu lưu hành',
+        'issue_share': 'Cổ phiếu phát hành',
+        'established_year': 'Năm thành lập',
+        'no_employees': 'Số nhân viên',
+        'stock_rating': 'Xếp hạng cổ phiếu',
+        'delta_in_week': 'Thay đổi trong tuần',
+        'delta_in_month': 'Thay đổi trong tháng',
+        'delta_in_year': 'Thay đổi trong năm',
+        'short_name': 'Tên viết tắt',
+        'website': 'Website',
+        'industry_id': 'Mã ngành',
+        'industry_id_v2': 'Mã ngành v2'
+    }
+
+    # Rename columns
+    overview_data = overview_data.rename(columns=vietnamese_labels)
+
+    # Convert all values to strings and format numeric values
+    for col in overview_data.columns:
+        if overview_data[col].dtype in ['float64', 'int64']:
+            overview_data[col] = overview_data[col].apply(lambda x: f"{x:,.2f}" if pd.notnull(x) else "N/A")
+        else:
+            overview_data[col] = overview_data[col].astype(str).replace('nan', 'N/A')
+
+    # Convert to dictionary for easier display
+    overview_dict = overview_data.iloc[0].to_dict()
+
+    # Print beautified output
+    message = f"Tổng quan cổ phiếu {symbol}:\n"
+    for key, value in overview_dict.items():
+        message += f"{key}: {value}\n"
+    return message
 
 # Schedule the daily recommendations
 schedule.every().day.at("08:00").do(send_daily_recommendations)
