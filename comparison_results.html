@@ -1,0 +1,784 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .table {
+            font-size: 0.9em;
+        }
+        th {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h2 class="mt-4 mb-4">VN30 Backtesting Comparison</h2>
+        <table class="dataframe table table-striped table-hover">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Symbol</th>
+      <th colspan="2" halign="left">Return [%]</th>
+      <th colspan="2" halign="left">Buy & Hold Return [%]</th>
+      <th colspan="2" halign="left">Max. Drawdown [%]</th>
+      <th colspan="2" halign="left">Max. Drawdown Duration</th>
+      <th colspan="2" halign="left"># Trades</th>
+      <th colspan="2" halign="left">Win Rate [%]</th>
+      <th colspan="2" halign="left">Best Trade [%]</th>
+      <th colspan="2" halign="left">Worst Trade [%]</th>
+      <th colspan="2" halign="left">Avg. Trade [%]</th>
+      <th colspan="2" halign="left">Max. Trade Duration</th>
+    </tr>
+    <tr>
+      <th></th>
+      <th></th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+      <th>5Y</th>
+      <th>1Y</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>ACB</td>
+      <td><span style="color: green">102.08%</span></td>
+      <td><span style="color: green">14.10%</span></td>
+      <td><span style="color: green">212.34%</span></td>
+      <td><span style="color: green">29.77%</span></td>
+      <td><span style="color: red">-30.73%</span></td>
+      <td><span style="color: red">-6.76%</span></td>
+      <td>1184 days</td>
+      <td>119 days</td>
+      <td>44</td>
+      <td>9</td>
+      <td><span style="color: green">47.73%</span></td>
+      <td><span style="color: green">44.44%</span></td>
+      <td><span style="color: green">18.82%</span></td>
+      <td><span style="color: green">14.93%</span></td>
+      <td><span style="color: red">-5.97%</span></td>
+      <td><span style="color: red">-4.39%</span></td>
+      <td><span style="color: green">1.61%</span></td>
+      <td><span style="color: green">1.48%</span></td>
+      <td>66 days</td>
+      <td>55 days</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>BCM</td>
+      <td><span style="color: green">87.73%</span></td>
+      <td><span style="color: red">-0.23%</span></td>
+      <td><span style="color: green">155.68%</span></td>
+      <td><span style="color: green">2.36%</span></td>
+      <td><span style="color: red">-32.29%</span></td>
+      <td><span style="color: red">-16.26%</span></td>
+      <td>730 days</td>
+      <td>109 days</td>
+      <td>47</td>
+      <td>11</td>
+      <td><span style="color: green">31.91%</span></td>
+      <td><span style="color: green">36.36%</span></td>
+      <td><span style="color: green">45.16%</span></td>
+      <td><span style="color: green">12.96%</span></td>
+      <td><span style="color: red">-20.40%</span></td>
+      <td><span style="color: red">-5.10%</span></td>
+      <td><span style="color: green">1.35%</span></td>
+      <td><span style="color: red">-0.02%</span></td>
+      <td>54 days</td>
+      <td>28 days</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>BID</td>
+      <td><span style="color: green">34.86%</span></td>
+      <td><span style="color: red">-2.87%</span></td>
+      <td><span style="color: green">50.97%</span></td>
+      <td><span style="color: green">16.01%</span></td>
+      <td><span style="color: red">-28.66%</span></td>
+      <td><span style="color: red">-27.30%</span></td>
+      <td>405 days</td>
+      <td>177 days</td>
+      <td>48</td>
+      <td>13</td>
+      <td><span style="color: green">37.50%</span></td>
+      <td><span style="color: green">46.15%</span></td>
+      <td><span style="color: green">26.42%</span></td>
+      <td><span style="color: green">12.15%</span></td>
+      <td><span style="color: red">-12.04%</span></td>
+      <td><span style="color: red">-9.25%</span></td>
+      <td><span style="color: green">0.61%</span></td>
+      <td><span style="color: red">-0.29%</span></td>
+      <td>54 days</td>
+      <td>36 days</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>BVH</td>
+      <td><span style="color: green">13.16%</span></td>
+      <td><span style="color: green">9.14%</span></td>
+      <td><span style="color: red">-25.90%</span></td>
+      <td><span style="color: green">2.55%</span></td>
+      <td><span style="color: red">-32.03%</span></td>
+      <td><span style="color: red">-9.00%</span></td>
+      <td>877 days</td>
+      <td>224 days</td>
+      <td>51</td>
+      <td>10</td>
+      <td><span style="color: green">41.18%</span></td>
+      <td><span style="color: green">40.00%</span></td>
+      <td><span style="color: green">18.98%</span></td>
+      <td><span style="color: green">13.84%</span></td>
+      <td><span style="color: red">-10.79%</span></td>
+      <td><span style="color: red">-5.51%</span></td>
+      <td><span style="color: green">0.24%</span></td>
+      <td><span style="color: green">0.88%</span></td>
+      <td>41 days</td>
+      <td>40 days</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>CTG</td>
+      <td><span style="color: green">67.35%</span></td>
+      <td><span style="color: green">4.06%</span></td>
+      <td><span style="color: green">144.25%</span></td>
+      <td><span style="color: green">19.95%</span></td>
+      <td><span style="color: red">-29.64%</span></td>
+      <td><span style="color: red">-21.27%</span></td>
+      <td>1183 days</td>
+      <td>185 days</td>
+      <td>46</td>
+      <td>11</td>
+      <td><span style="color: green">45.65%</span></td>
+      <td><span style="color: green">45.45%</span></td>
+      <td><span style="color: green">19.94%</span></td>
+      <td><span style="color: green">17.91%</span></td>
+      <td><span style="color: red">-11.98%</span></td>
+      <td><span style="color: red">-11.98%</span></td>
+      <td><span style="color: green">1.13%</span></td>
+      <td><span style="color: green">0.36%</span></td>
+      <td>56 days</td>
+      <td>36 days</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>FPT</td>
+      <td><span style="color: green">195.47%</span></td>
+      <td><span style="color: green">13.31%</span></td>
+      <td><span style="color: green">439.63%</span></td>
+      <td><span style="color: green">61.24%</span></td>
+      <td><span style="color: red">-16.92%</span></td>
+      <td><span style="color: red">-14.69%</span></td>
+      <td>408 days</td>
+      <td>71 days</td>
+      <td>45</td>
+      <td>11</td>
+      <td><span style="color: green">62.22%</span></td>
+      <td><span style="color: green">63.64%</span></td>
+      <td><span style="color: green">17.52%</span></td>
+      <td><span style="color: green">9.82%</span></td>
+      <td><span style="color: red">-12.03%</span></td>
+      <td><span style="color: red">-7.78%</span></td>
+      <td><span style="color: green">2.44%</span></td>
+      <td><span style="color: green">1.14%</span></td>
+      <td>42 days</td>
+      <td>30 days</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>GAS</td>
+      <td><span style="color: green">58.04%</span></td>
+      <td><span style="color: red">-1.90%</span></td>
+      <td><span style="color: green">21.71%</span></td>
+      <td><span style="color: green">0.36%</span></td>
+      <td><span style="color: red">-32.58%</span></td>
+      <td><span style="color: red">-13.20%</span></td>
+      <td>907 days</td>
+      <td>289 days</td>
+      <td>51</td>
+      <td>12</td>
+      <td><span style="color: green">43.14%</span></td>
+      <td><span style="color: green">25.00%</span></td>
+      <td><span style="color: green">19.39%</span></td>
+      <td><span style="color: green">7.35%</span></td>
+      <td><span style="color: red">-10.82%</span></td>
+      <td><span style="color: red">-2.43%</span></td>
+      <td><span style="color: green">0.90%</span></td>
+      <td><span style="color: red">-0.16%</span></td>
+      <td>64 days</td>
+      <td>31 days</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>GVR</td>
+      <td><span style="color: green">165.91%</span></td>
+      <td><span style="color: green">54.35%</span></td>
+      <td><span style="color: green">248.62%</span></td>
+      <td><span style="color: green">63.58%</span></td>
+      <td><span style="color: red">-62.29%</span></td>
+      <td><span style="color: red">-12.53%</span></td>
+      <td>1107 days</td>
+      <td>113 days</td>
+      <td>50</td>
+      <td>9</td>
+      <td><span style="color: green">58.00%</span></td>
+      <td><span style="color: green">66.67%</span></td>
+      <td><span style="color: green">41.58%</span></td>
+      <td><span style="color: green">28.89%</span></td>
+      <td><span style="color: red">-20.79%</span></td>
+      <td><span style="color: red">-4.77%</span></td>
+      <td><span style="color: green">1.98%</span></td>
+      <td><span style="color: green">4.94%</span></td>
+      <td>42 days</td>
+      <td>39 days</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>HDB</td>
+      <td><span style="color: green">91.41%</span></td>
+      <td><span style="color: green">16.65%</span></td>
+      <td><span style="color: green">224.36%</span></td>
+      <td><span style="color: green">68.70%</span></td>
+      <td><span style="color: red">-34.27%</span></td>
+      <td><span style="color: red">-13.39%</span></td>
+      <td>1010 days</td>
+      <td>197 days</td>
+      <td>48</td>
+      <td>11</td>
+      <td><span style="color: green">52.08%</span></td>
+      <td><span style="color: green">36.36%</span></td>
+      <td><span style="color: green">21.13%</span></td>
+      <td><span style="color: green">19.63%</span></td>
+      <td><span style="color: red">-14.58%</span></td>
+      <td><span style="color: red">-3.37%</span></td>
+      <td><span style="color: green">1.36%</span></td>
+      <td><span style="color: green">1.41%</span></td>
+      <td>59 days</td>
+      <td>59 days</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>HPG</td>
+      <td><span style="color: green">192.72%</span></td>
+      <td><span style="color: green">0.40%</span></td>
+      <td><span style="color: green">156.80%</span></td>
+      <td><span style="color: green">0.91%</span></td>
+      <td><span style="color: red">-44.93%</span></td>
+      <td><span style="color: red">-8.92%</span></td>
+      <td>1186 days</td>
+      <td>210 days</td>
+      <td>45</td>
+      <td>10</td>
+      <td><span style="color: green">48.89%</span></td>
+      <td><span style="color: green">40.00%</span></td>
+      <td><span style="color: green">53.29%</span></td>
+      <td><span style="color: green">10.77%</span></td>
+      <td><span style="color: red">-13.37%</span></td>
+      <td><span style="color: red">-7.70%</span></td>
+      <td><span style="color: green">2.42%</span></td>
+      <td><span style="color: green">0.04%</span></td>
+      <td>68 days</td>
+      <td>33 days</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>MBB</td>
+      <td><span style="color: green">103.72%</span></td>
+      <td><span style="color: green">26.22%</span></td>
+      <td><span style="color: green">163.24%</span></td>
+      <td><span style="color: green">32.60%</span></td>
+      <td><span style="color: red">-25.55%</span></td>
+      <td><span style="color: red">-6.57%</span></td>
+      <td>986 days</td>
+      <td>111 days</td>
+      <td>48</td>
+      <td>10</td>
+      <td><span style="color: green">56.25%</span></td>
+      <td><span style="color: green">60.00%</span></td>
+      <td><span style="color: green">22.44%</span></td>
+      <td><span style="color: green">18.22%</span></td>
+      <td><span style="color: red">-12.32%</span></td>
+      <td><span style="color: red">-3.77%</span></td>
+      <td><span style="color: green">1.49%</span></td>
+      <td><span style="color: green">2.36%</span></td>
+      <td>48 days</td>
+      <td>37 days</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>MSN</td>
+      <td><span style="color: green">18.96%</span></td>
+      <td><span style="color: green">17.96%</span></td>
+      <td><span style="color: green">65.87%</span></td>
+      <td><span style="color: red">-6.13%</span></td>
+      <td><span style="color: red">-42.95%</span></td>
+      <td><span style="color: red">-9.84%</span></td>
+      <td>751 days</td>
+      <td>85 days</td>
+      <td>51</td>
+      <td>9</td>
+      <td><span style="color: green">41.18%</span></td>
+      <td><span style="color: green">44.44%</span></td>
+      <td><span style="color: green">49.98%</span></td>
+      <td><span style="color: green">17.67%</span></td>
+      <td><span style="color: red">-12.06%</span></td>
+      <td><span style="color: red">-4.73%</span></td>
+      <td><span style="color: green">0.34%</span></td>
+      <td><span style="color: green">1.85%</span></td>
+      <td>40 days</td>
+      <td>40 days</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>MWG</td>
+      <td><span style="color: green">99.92%</span></td>
+      <td><span style="color: red">-8.33%</span></td>
+      <td><span style="color: green">86.48%</span></td>
+      <td><span style="color: green">29.57%</span></td>
+      <td><span style="color: red">-27.00%</span></td>
+      <td><span style="color: red">-18.09%</span></td>
+      <td>352 days</td>
+      <td>322 days</td>
+      <td>49</td>
+      <td>13</td>
+      <td><span style="color: green">48.98%</span></td>
+      <td><span style="color: green">30.77%</span></td>
+      <td><span style="color: green">21.17%</span></td>
+      <td><span style="color: green">11.54%</span></td>
+      <td><span style="color: red">-15.53%</span></td>
+      <td><span style="color: red">-9.69%</span></td>
+      <td><span style="color: green">1.42%</span></td>
+      <td><span style="color: red">-0.67%</span></td>
+      <td>49 days</td>
+      <td>32 days</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>PLX</td>
+      <td><span style="color: green">67.57%</span></td>
+      <td><span style="color: green">24.81%</span></td>
+      <td><span style="color: green">3.91%</span></td>
+      <td><span style="color: green">31.24%</span></td>
+      <td><span style="color: red">-37.05%</span></td>
+      <td><span style="color: red">-6.25%</span></td>
+      <td>1083 days</td>
+      <td>75 days</td>
+      <td>47</td>
+      <td>9</td>
+      <td><span style="color: green">59.57%</span></td>
+      <td><span style="color: green">88.89%</span></td>
+      <td><span style="color: green">17.42%</span></td>
+      <td><span style="color: green">8.85%</span></td>
+      <td><span style="color: red">-12.54%</span></td>
+      <td><span style="color: red">-4.64%</span></td>
+      <td><span style="color: green">1.10%</span></td>
+      <td><span style="color: green">2.49%</span></td>
+      <td>38 days</td>
+      <td>36 days</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>POW</td>
+      <td><span style="color: green">50.39%</span></td>
+      <td><span style="color: green">0.79%</span></td>
+      <td><span style="color: green">18.50%</span></td>
+      <td><span style="color: green">3.46%</span></td>
+      <td><span style="color: red">-43.29%</span></td>
+      <td><span style="color: red">-13.71%</span></td>
+      <td>982 days</td>
+      <td>230 days</td>
+      <td>48</td>
+      <td>12</td>
+      <td><span style="color: green">39.58%</span></td>
+      <td><span style="color: green">25.00%</span></td>
+      <td><span style="color: green">45.98%</span></td>
+      <td><span style="color: green">23.87%</span></td>
+      <td><span style="color: red">-18.51%</span></td>
+      <td><span style="color: red">-7.42%</span></td>
+      <td><span style="color: green">0.85%</span></td>
+      <td><span style="color: green">0.07%</span></td>
+      <td>74 days</td>
+      <td>43 days</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>SAB</td>
+      <td><span style="color: green">23.15%</span></td>
+      <td><span style="color: red">-15.93%</span></td>
+      <td><span style="color: red">-40.65%</span></td>
+      <td><span style="color: red">-23.31%</span></td>
+      <td><span style="color: red">-47.51%</span></td>
+      <td><span style="color: red">-25.70%</span></td>
+      <td>758 days</td>
+      <td>319 days</td>
+      <td>46</td>
+      <td>11</td>
+      <td><span style="color: green">36.96%</span></td>
+      <td><span style="color: green">36.36%</span></td>
+      <td><span style="color: green">25.78%</span></td>
+      <td><span style="color: green">6.30%</span></td>
+      <td><span style="color: red">-9.98%</span></td>
+      <td><span style="color: red">-9.98%</span></td>
+      <td><span style="color: green">0.45%</span></td>
+      <td><span style="color: red">-1.57%</span></td>
+      <td>42 days</td>
+      <td>38 days</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>SHB</td>
+      <td><span style="color: green">63.19%</span></td>
+      <td><span style="color: red">-0.25%</span></td>
+      <td><span style="color: green">266.32%</span></td>
+      <td><span style="color: red">-12.95%</span></td>
+      <td><span style="color: red">-36.62%</span></td>
+      <td><span style="color: red">-14.30%</span></td>
+      <td>635 days</td>
+      <td>231 days</td>
+      <td>47</td>
+      <td>11</td>
+      <td><span style="color: green">46.81%</span></td>
+      <td><span style="color: green">27.27%</span></td>
+      <td><span style="color: green">27.13%</span></td>
+      <td><span style="color: green">12.09%</span></td>
+      <td><span style="color: red">-15.07%</span></td>
+      <td><span style="color: red">-3.05%</span></td>
+      <td><span style="color: green">1.05%</span></td>
+      <td><span style="color: red">-0.02%</span></td>
+      <td>48 days</td>
+      <td>43 days</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>SSB</td>
+      <td><span style="color: green">48.16%</span></td>
+      <td><span style="color: red">-5.54%</span></td>
+      <td><span style="color: green">92.96%</span></td>
+      <td><span style="color: red">-20.69%</span></td>
+      <td><span style="color: red">-23.87%</span></td>
+      <td><span style="color: red">-12.25%</span></td>
+      <td>872 days</td>
+      <td>231 days</td>
+      <td>27</td>
+      <td>8</td>
+      <td><span style="color: green">33.33%</span></td>
+      <td><span style="color: green">25.00%</span></td>
+      <td><span style="color: green">43.56%</span></td>
+      <td><span style="color: green">2.86%</span></td>
+      <td><span style="color: red">-8.67%</span></td>
+      <td><span style="color: red">-4.15%</span></td>
+      <td><span style="color: green">1.47%</span></td>
+      <td><span style="color: red">-0.71%</span></td>
+      <td>64 days</td>
+      <td>23 days</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>SSI</td>
+      <td><span style="color: green">445.02%</span></td>
+      <td><span style="color: green">3.74%</span></td>
+      <td><span style="color: green">286.91%</span></td>
+      <td><span style="color: green">1.05%</span></td>
+      <td><span style="color: red">-44.31%</span></td>
+      <td><span style="color: red">-13.74%</span></td>
+      <td>651 days</td>
+      <td>282 days</td>
+      <td>43</td>
+      <td>11</td>
+      <td><span style="color: green">58.14%</span></td>
+      <td><span style="color: green">54.55%</span></td>
+      <td><span style="color: green">89.26%</span></td>
+      <td><span style="color: green">8.47%</span></td>
+      <td><span style="color: red">-15.62%</span></td>
+      <td><span style="color: red">-5.05%</span></td>
+      <td><span style="color: green">4.02%</span></td>
+      <td><span style="color: green">0.33%</span></td>
+      <td>69 days</td>
+      <td>31 days</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>STB</td>
+      <td><span style="color: green">119.33%</span></td>
+      <td><span style="color: red">-7.21%</span></td>
+      <td><span style="color: green">199.51%</span></td>
+      <td><span style="color: red">-6.57%</span></td>
+      <td><span style="color: red">-33.86%</span></td>
+      <td><span style="color: red">-15.37%</span></td>
+      <td>380 days</td>
+      <td>219 days</td>
+      <td>49</td>
+      <td>11</td>
+      <td><span style="color: green">46.94%</span></td>
+      <td><span style="color: green">27.27%</span></td>
+      <td><span style="color: green">35.60%</span></td>
+      <td><span style="color: green">9.93%</span></td>
+      <td><span style="color: red">-18.18%</span></td>
+      <td><span style="color: red">-4.96%</span></td>
+      <td><span style="color: green">1.62%</span></td>
+      <td><span style="color: red">-0.68%</span></td>
+      <td>56 days</td>
+      <td>40 days</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>TCB</td>
+      <td><span style="color: green">163.16%</span></td>
+      <td><span style="color: green">16.86%</span></td>
+      <td><span style="color: green">102.34%</span></td>
+      <td><span style="color: green">37.60%</span></td>
+      <td><span style="color: red">-29.34%</span></td>
+      <td><span style="color: red">-12.23%</span></td>
+      <td>962 days</td>
+      <td>78 days</td>
+      <td>46</td>
+      <td>11</td>
+      <td><span style="color: green">54.35%</span></td>
+      <td><span style="color: green">54.55%</span></td>
+      <td><span style="color: green">52.08%</span></td>
+      <td><span style="color: green">9.99%</span></td>
+      <td><span style="color: red">-12.28%</span></td>
+      <td><span style="color: red">-7.23%</span></td>
+      <td><span style="color: green">2.13%</span></td>
+      <td><span style="color: green">1.43%</span></td>
+      <td>68 days</td>
+      <td>30 days</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>TPB</td>
+      <td><span style="color: green">51.64%</span></td>
+      <td><span style="color: red">-2.06%</span></td>
+      <td><span style="color: green">120.17%</span></td>
+      <td><span style="color: red">-6.38%</span></td>
+      <td><span style="color: red">-38.92%</span></td>
+      <td><span style="color: red">-8.91%</span></td>
+      <td>1009 days</td>
+      <td>184 days</td>
+      <td>47</td>
+      <td>10</td>
+      <td><span style="color: green">42.55%</span></td>
+      <td><span style="color: green">50.00%</span></td>
+      <td><span style="color: green">37.61%</span></td>
+      <td><span style="color: green">5.51%</span></td>
+      <td><span style="color: red">-10.29%</span></td>
+      <td><span style="color: red">-8.18%</span></td>
+      <td><span style="color: green">0.89%</span></td>
+      <td><span style="color: red">-0.21%</span></td>
+      <td>65 days</td>
+      <td>29 days</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>VCB</td>
+      <td><span style="color: green">42.66%</span></td>
+      <td><span style="color: red">-0.89%</span></td>
+      <td><span style="color: green">55.32%</span></td>
+      <td><span style="color: green">1.78%</span></td>
+      <td><span style="color: red">-16.74%</span></td>
+      <td><span style="color: red">-11.40%</span></td>
+      <td>441 days</td>
+      <td>224 days</td>
+      <td>51</td>
+      <td>11</td>
+      <td><span style="color: green">35.29%</span></td>
+      <td><span style="color: green">27.27%</span></td>
+      <td><span style="color: green">19.73%</span></td>
+      <td><span style="color: green">10.14%</span></td>
+      <td><span style="color: red">-6.98%</span></td>
+      <td><span style="color: red">-3.39%</span></td>
+      <td><span style="color: green">0.70%</span></td>
+      <td><span style="color: red">-0.08%</span></td>
+      <td>47 days</td>
+      <td>34 days</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>VHM</td>
+      <td><span style="color: red">-1.90%</span></td>
+      <td><span style="color: red">-22.98%</span></td>
+      <td><span style="color: red">-33.66%</span></td>
+      <td><span style="color: red">-24.95%</span></td>
+      <td><span style="color: red">-40.68%</span></td>
+      <td><span style="color: red">-32.54%</span></td>
+      <td>1113 days</td>
+      <td>325 days</td>
+      <td>48</td>
+      <td>11</td>
+      <td><span style="color: green">45.83%</span></td>
+      <td><span style="color: green">27.27%</span></td>
+      <td><span style="color: green">18.29%</span></td>
+      <td><span style="color: green">10.37%</span></td>
+      <td><span style="color: red">-12.69%</span></td>
+      <td><span style="color: red">-12.69%</span></td>
+      <td><span style="color: red">-0.04%</span></td>
+      <td><span style="color: red">-2.35%</span></td>
+      <td>39 days</td>
+      <td>21 days</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>VIB</td>
+      <td><span style="color: green">192.83%</span></td>
+      <td><span style="color: green">11.01%</span></td>
+      <td><span style="color: green">276.02%</span></td>
+      <td><span style="color: green">10.41%</span></td>
+      <td><span style="color: red">-30.89%</span></td>
+      <td><span style="color: red">-10.00%</span></td>
+      <td>553 days</td>
+      <td>154 days</td>
+      <td>44</td>
+      <td>10</td>
+      <td><span style="color: green">52.27%</span></td>
+      <td><span style="color: green">60.00%</span></td>
+      <td><span style="color: green">34.56%</span></td>
+      <td><span style="color: green">10.68%</span></td>
+      <td><span style="color: red">-10.69%</span></td>
+      <td><span style="color: red">-5.94%</span></td>
+      <td><span style="color: green">2.47%</span></td>
+      <td><span style="color: green">1.05%</span></td>
+      <td>53 days</td>
+      <td>30 days</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>VIC</td>
+      <td><span style="color: green">22.81%</span></td>
+      <td><span style="color: green">3.65%</span></td>
+      <td><span style="color: red">-56.76%</span></td>
+      <td><span style="color: red">-29.05%</span></td>
+      <td><span style="color: red">-32.85%</span></td>
+      <td><span style="color: red">-13.12%</span></td>
+      <td>587 days</td>
+      <td>189 days</td>
+      <td>43</td>
+      <td>8</td>
+      <td><span style="color: green">39.53%</span></td>
+      <td><span style="color: green">50.00%</span></td>
+      <td><span style="color: green">27.57%</span></td>
+      <td><span style="color: green">7.17%</span></td>
+      <td><span style="color: red">-11.86%</span></td>
+      <td><span style="color: red">-8.39%</span></td>
+      <td><span style="color: green">0.48%</span></td>
+      <td><span style="color: green">0.45%</span></td>
+      <td>38 days</td>
+      <td>40 days</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>VJC</td>
+      <td><span style="color: green">2.89%</span></td>
+      <td><span style="color: green">10.32%</span></td>
+      <td><span style="color: red">-28.85%</span></td>
+      <td><span style="color: green">4.78%</span></td>
+      <td><span style="color: red">-38.08%</span></td>
+      <td><span style="color: red">-12.65%</span></td>
+      <td>1101 days</td>
+      <td>259 days</td>
+      <td>45</td>
+      <td>10</td>
+      <td><span style="color: green">37.78%</span></td>
+      <td><span style="color: green">60.00%</span></td>
+      <td><span style="color: green">13.81%</span></td>
+      <td><span style="color: green">8.11%</span></td>
+      <td><span style="color: red">-9.85%</span></td>
+      <td><span style="color: red">-2.93%</span></td>
+      <td><span style="color: green">0.06%</span></td>
+      <td><span style="color: green">0.99%</span></td>
+      <td>43 days</td>
+      <td>26 days</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>VNM</td>
+      <td><span style="color: red">-15.73%</span></td>
+      <td><span style="color: red">-0.20%</span></td>
+      <td><span style="color: red">-9.15%</span></td>
+      <td><span style="color: red">-5.85%</span></td>
+      <td><span style="color: red">-38.69%</span></td>
+      <td><span style="color: red">-12.83%</span></td>
+      <td>1429 days</td>
+      <td>311 days</td>
+      <td>48</td>
+      <td>11</td>
+      <td><span style="color: green">35.42%</span></td>
+      <td><span style="color: green">36.36%</span></td>
+      <td><span style="color: green">12.38%</span></td>
+      <td><span style="color: green">10.42%</span></td>
+      <td><span style="color: red">-10.61%</span></td>
+      <td><span style="color: red">-4.03%</span></td>
+      <td><span style="color: red">-0.36%</span></td>
+      <td><span style="color: red">-0.02%</span></td>
+      <td>52 days</td>
+      <td>34 days</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>VPB</td>
+      <td><span style="color: green">158.47%</span></td>
+      <td><span style="color: red">-9.92%</span></td>
+      <td><span style="color: green">175.04%</span></td>
+      <td><span style="color: red">-0.32%</span></td>
+      <td><span style="color: red">-22.64%</span></td>
+      <td><span style="color: red">-16.75%</span></td>
+      <td>385 days</td>
+      <td>318 days</td>
+      <td>47</td>
+      <td>12</td>
+      <td><span style="color: green">44.68%</span></td>
+      <td><span style="color: green">33.33%</span></td>
+      <td><span style="color: green">52.67%</span></td>
+      <td><span style="color: green">4.84%</span></td>
+      <td><span style="color: red">-8.42%</span></td>
+      <td><span style="color: red">-5.26%</span></td>
+      <td><span style="color: green">2.04%</span></td>
+      <td><span style="color: red">-0.87%</span></td>
+      <td>70 days</td>
+      <td>35 days</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>VRE</td>
+      <td><span style="color: red">-13.40%</span></td>
+      <td><span style="color: red">-20.08%</span></td>
+      <td><span style="color: red">-44.10%</span></td>
+      <td><span style="color: red">-36.32%</span></td>
+      <td><span style="color: red">-41.27%</span></td>
+      <td><span style="color: red">-27.05%</span></td>
+      <td>1180 days</td>
+      <td>322 days</td>
+      <td>48</td>
+      <td>11</td>
+      <td><span style="color: green">35.42%</span></td>
+      <td><span style="color: green">18.18%</span></td>
+      <td><span style="color: green">23.59%</span></td>
+      <td><span style="color: green">7.48%</span></td>
+      <td><span style="color: red">-13.37%</span></td>
+      <td><span style="color: red">-8.89%</span></td>
+      <td><span style="color: red">-0.30%</span></td>
+      <td><span style="color: red">-2.02%</span></td>
+      <td>42 days</td>
+      <td>33 days</td>
+    </tr>
+  </tbody>
+</table>
+    </div>
+</body>
+</html>
