@@ -12,6 +12,7 @@ import logging
 from backtesting import Backtest, Strategy
 import pandas as pd
 from bokeh.io import export_png
+from tabulate import tabulate
 
 # Load environment variables
 load_dotenv()
@@ -111,6 +112,7 @@ def send_welcome(message):
 def send_help(message):
     help_text = """
 📊 Available commands:
+Note: The bot will automatically send recommendations for your watchlist every working day at 8:00 AM.
 /add <symbol> - Add a stock symbol to your watchlist
 /remove <symbol> - Remove a stock symbol from your watchlist
 /list - List all symbols in your watchlist
@@ -244,12 +246,71 @@ def backtest_stock(message):
         bot.reply_to(message, f"Running backtest for {symbol} over {duration}...")
         bt = run_backtest(symbol, duration)
         result = bt.run()
-        bot.send_message(channel_id, str(result))
+        
+        # Beautify the results
+        beautified_results = beautify_backtest_results(result)
+        bot.send_message(channel_id, beautified_results)
+        
         send_backtest_plot(bt, symbol, channel_id)
         logger.info(f"Sent backtest results for {symbol} over {duration} to channel {channel_id}")
     except ValueError:
         bot.reply_to(message, "Please provide a symbol and duration. Usage: /backtest <symbol> <duration>")
         logger.warning(f"User {message.from_user.id} failed to run backtest (invalid input)")
+
+def beautify_backtest_results(result):
+    def format_duration(duration):
+        return str(duration).split()[0] + ' days'
+
+    # Extract relevant metrics and group them into sections
+    sections = [
+        ("📅 Overview", [
+            ('Start', result['Start'].strftime('%Y-%m-%d')),
+            ('End', result['End'].strftime('%Y-%m-%d')),
+            ('Duration', format_duration(result['Duration'])),
+            ('Exposure Time', f"{result['Exposure Time [%]']:.2f}%"),
+        ]),
+        ("💰 Performance", [
+            ('Equity Final', f"{result['Equity Final [$]']:,.0f} đ"),
+            ('Equity Peak', f"{result['Equity Peak [$]']:,.0f} đ"),
+            ('Return', f"{result['Return [%]']:.2f}%"),
+            ('Buy & Hold Return', f"{result['Buy & Hold Return [%]']:.2f}%"),
+            ('Return (Ann.)', f"{result['Return (Ann.) [%]']:.2f}%"),
+            ('Volatility (Ann.)', f"{result['Volatility (Ann.) [%]']:.2f}%"),
+        ]),
+        ("📊 Ratios", [
+            ('Sharpe Ratio', f"{result['Sharpe Ratio']:.2f}"),
+            ('Sortino Ratio', f"{result['Sortino Ratio']:.2f}"),
+            ('Calmar Ratio', f"{result['Calmar Ratio']:.2f}"),
+        ]),
+        ("📉 Drawdowns", [
+            ('Max. Drawdown', f"{result['Max. Drawdown [%]']:.2f}%"),
+            ('Avg. Drawdown', f"{result['Avg. Drawdown [%]']:.2f}%"),
+            ('Max. Drawdown Duration', format_duration(result['Max. Drawdown Duration'])),
+            ('Avg. Drawdown Duration', format_duration(result['Avg. Drawdown Duration'])),
+        ]),
+        ("🔄 Trades", [
+            ('# Trades', result['# Trades']),
+            ('Win Rate', f"{result['Win Rate [%]']:.2f}%"),
+            ('Best Trade', f"{result['Best Trade [%]']:.2f}%"),
+            ('Worst Trade', f"{result['Worst Trade [%]']:.2f}%"),
+            ('Avg. Trade', f"{result['Avg. Trade [%]']:.2f}%"),
+            ('Max. Trade Duration', format_duration(result['Max. Trade Duration'])),
+            ('Avg. Trade Duration', format_duration(result['Avg. Trade Duration'])),
+        ]),
+        ("📈 Additional Metrics", [
+            ('Profit Factor', f"{result['Profit Factor']:.2f}"),
+            ('Expectancy', f"{result['Expectancy [%]']:.2f}%"),
+            ('SQN', f"{result['SQN']:.2f}"),
+            ('Kelly Criterion', f"{result['Kelly Criterion']:.4f}"),
+        ]),
+    ]
+    
+    # Create a formatted string for the results
+    return "\n\n".join([
+        f"{section_name}\n" + "\n".join([f"{metric}:   {value}" for metric, value in section_metrics])
+        for section_name, section_metrics in sections
+    ])
+
 
 def send_backtest_plot(bt, symbol, chat_id):
     # Create a plot of the stats
