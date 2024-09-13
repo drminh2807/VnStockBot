@@ -144,7 +144,7 @@ def add_stock(message):
             
             # Get and send recommendation for the newly added symbol
             recommendation = get_recommendation(symbol)
-            bot.send_message(channel_id, f"Current recommendation for {symbol}:\n{recommendation}")
+            bot.send_message(channel_id, f"Current recommendation for {symbol}:\n{recommendation[1]}")
             logger.info(f"Sent recommendation for {symbol} to channel {channel_id}")
         else:
             bot.reply_to(message, f"{symbol} is already in the watchlist.")
@@ -194,7 +194,21 @@ def send_today_recommendations(message):
     watchlist = get_watchlist(channel_id)
     if watchlist:
         recommendations = [get_recommendation(symbol) for symbol in watchlist]
-        message_text = "📊 Today's recommendations:\n" + "\n".join(recommendations)
+        
+        # Sort recommendations
+        buy_recs = [rec for rec in recommendations if rec[0] == "Buy"]
+        sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
+        hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
+        
+        # Create message
+        message_text = "📊 Today's recommendations:\n\n"
+        if buy_recs:
+            message_text += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
+        if sell_recs:
+            message_text += "🔴 SELL:\n" + "\n".join([rec[1] for rec in sell_recs]) + "\n\n"
+        if hold_recs:
+            message_text += "🟡 HOLD:\n" + "\n".join([rec[1] for rec in hold_recs])
+        
         bot.reply_to(message, message_text)
         logger.info(f"Sent today's recommendations to channel {channel_id}")
     else:
@@ -204,7 +218,7 @@ def send_today_recommendations(message):
 # Function to get stock recommendation
 def get_recommendation(symbol):
     stock = Vnstock().stock(symbol=symbol, source='VCI')
-    data = stock.quote.history(start=(datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'), end=(datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))
+    data = stock.quote.history(start=(datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'), end=(datetime.now()).strftime('%Y-%m-%d'))
     
     if data.empty:
         return "No data available"
@@ -212,20 +226,13 @@ def get_recommendation(symbol):
     last_price = data['close'].iloc[-1]
     last_change_percent = (data['close'].iloc[-1] - data['close'].iloc[-2]) / data['close'].iloc[-2] * 100
 
-    # Use recommendation from vnstock_alert
     recommendation = calculate_recommendation(data)
 
-    # Add emojis based on recommendation and change percentage
-    if recommendation == "Buy":
-        rec_emoji = "🟢"
-    elif recommendation == "Sell":
-        rec_emoji = "🔴"
-    else:
-        rec_emoji = "🟡"
+    change_emoji = "🟩" if last_change_percent > 0 else "🟥" if last_change_percent < 0 else "🟨"
+    change_emoji = "🟪" if last_change_percent >= 7 else change_emoji
+    change_emoji = "🟦" if last_change_percent <= -7 else change_emoji
 
-    change_emoji = "🔺" if last_change_percent > 0 else "🔻" if last_change_percent < 0 else "➖"
-
-    return f"{rec_emoji} {symbol}: {last_price:.2f} {change_emoji} ({last_change_percent:.2f}%) - {recommendation}"
+    return (recommendation, f"{symbol}: {last_price:.2f} {change_emoji} ({last_change_percent:.2f}%)")
 
 def calculate_indicators(data):
     ma10 = talib.MA(data.close, timeperiod=10)
@@ -350,7 +357,7 @@ def run_backtest(symbol, duration):
     days = int(duration[:-1]) * duration_map[duration[-1].lower()]
     
     stock = Vnstock().stock(symbol=symbol, source='VCI')
-    end_date = datetime.now() - timedelta(days=1)
+    end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
     data_vnstock = stock.quote.history(start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
     
@@ -374,7 +381,21 @@ def send_daily_recommendations():
             watchlist = channel_data['watchlist']
             if watchlist:
                 recommendations = [get_recommendation(symbol) for symbol in watchlist]
-                message = "📊 Daily recommendations:\n" + "\n".join(recommendations)
+                
+                # Sort recommendations
+                buy_recs = [rec for rec in recommendations if rec[0] == "Buy"]
+                sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
+                hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
+                
+                # Create message
+                message = "📊 Daily recommendations:\n\n"
+                if buy_recs:
+                    message += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
+                if sell_recs:
+                    message += "🔴 SELL:\n" + "\n".join([rec[1] for rec in sell_recs]) + "\n\n"
+                if hold_recs:
+                    message += "🟡 HOLD:\n" + "\n".join([rec[1] for rec in hold_recs])
+                
                 try:
                     bot.send_message(channel_id, message)
                     logger.info(f"Sent daily recommendations to channel {channel_id}")
