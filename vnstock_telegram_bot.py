@@ -134,24 +134,43 @@ Durations for backtest:
 @bot.message_handler(commands=['add'])
 def add_stock(message):
     try:
-        _, symbol = message.text.split(maxsplit=1)
-        symbol = symbol.upper()
+        _, *symbols = message.text.split()
         channel_id = message.chat.id
-        if symbol not in get_watchlist(channel_id):
-            add_symbol(channel_id, symbol)
-            bot.reply_to(message, f"Added {symbol} to the watchlist.")
-            logger.info(f"User {message.from_user.id} added {symbol} to watchlist in channel {channel_id}")
-            
-            # Get and send recommendation for the newly added symbol
-            recommendation = get_recommendation(symbol)
-            bot.send_message(channel_id, f"Current recommendation for {symbol}:\n{recommendation[1]}")
-            logger.info(f"Sent recommendation for {symbol} to channel {channel_id}")
-        else:
-            bot.reply_to(message, f"{symbol} is already in the watchlist.")
-            logger.info(f"User {message.from_user.id} attempted to add existing symbol {symbol} in channel {channel_id}")
+        added_symbols = []
+        invalid_symbols = []
+        existing_symbols = []
+
+        for symbol in symbols:
+            symbol = symbol.upper()
+            if symbol not in get_watchlist(channel_id):
+                try:
+                    recommendation = get_recommendation(symbol)
+                    if recommendation != "No data available":
+                        add_symbol(channel_id, symbol)
+                        added_symbols.append(symbol)
+                        rec_type, rec_details = recommendation
+                        bot.send_message(channel_id, f"Current recommendation for {symbol}:\n{rec_type}: {rec_details}")
+                    else:
+                        invalid_symbols.append(symbol)
+                except Exception:
+                    invalid_symbols.append(symbol)
+            else:
+                existing_symbols.append(symbol)
+
+        response = []
+        if added_symbols:
+            response.append(f"Added to the watchlist: {', '.join(added_symbols)}")
+        if invalid_symbols:
+            response.append(f"Invalid symbols: {', '.join(invalid_symbols)}")
+        if existing_symbols:
+            response.append(f"Already in the watchlist: {', '.join(existing_symbols)}")
+
+        bot.reply_to(message, "\n".join(response) if response else "No valid symbols provided.")
+        logger.info(f"User {message.from_user.id} added symbols to watchlist in channel {channel_id}: added={added_symbols}, invalid={invalid_symbols}, existing={existing_symbols}")
+
     except ValueError:
-        bot.reply_to(message, "Please provide a symbol. Usage: /add <symbol>")
-        logger.warning(f"User {message.from_user.id} failed to add symbol (invalid input)")
+        bot.reply_to(message, "Please provide at least one symbol. Usage: /add <symbol1> <symbol2> ...")
+        logger.warning(f"User {message.from_user.id} failed to add symbols (invalid input)")
 
 # Command handler for /remove
 @bot.message_handler(commands=['remove'])
