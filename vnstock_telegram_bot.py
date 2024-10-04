@@ -33,8 +33,9 @@ logger = logging.getLogger(__name__)
 
 # Global variables
 STATE_FILE = 'bot_state.json'
+DEFAULT_RECOMMENDATION_TIME = "08:00"
 bot_state = {
-    'channels': {}  # Each channel will have its own watchlist
+    'channels': {}  # Each channel will have its own watchlist and recommendation time
 }
 
 # Load state from file
@@ -43,7 +44,12 @@ def load_state():
     try:
         with open(STATE_FILE, 'r') as f:
             data = json.load(f)
-            bot_state['channels'] = {int(k): {'watchlist': set(v['watchlist'])} for k, v in data.get('channels', {}).items()}
+            bot_state['channels'] = {
+                int(k): {
+                    'watchlist': set(v['watchlist']),
+                    'recommendation_time': v.get('recommendation_time', DEFAULT_RECOMMENDATION_TIME)
+                } for k, v in data.get('channels', {}).items()
+            }
         logger.info(f"State loaded: {len(bot_state['channels'])} channels")
     except FileNotFoundError:
         logger.info("No existing state found. Starting with empty state.")
@@ -52,14 +58,22 @@ def load_state():
 def save_state():
     with open(STATE_FILE, 'w') as f:
         json.dump({
-            'channels': {str(k): {'watchlist': list(v['watchlist'])} for k, v in bot_state['channels'].items()}
+            'channels': {
+                str(k): {
+                    'watchlist': list(v['watchlist']),
+                    'recommendation_time': v['recommendation_time']
+                } for k, v in bot_state['channels'].items()
+            }
         }, f)
     logger.info(f"State saved: {len(bot_state['channels'])} channels")
 
 # Function to add a symbol to the watchlist
 def add_symbol(channel_id, symbol):
     if channel_id not in bot_state['channels']:
-        bot_state['channels'][channel_id] = {'watchlist': set()}
+        bot_state['channels'][channel_id] = {
+            'watchlist': set(),
+            'recommendation_time': DEFAULT_RECOMMENDATION_TIME
+        }
     bot_state['channels'][channel_id]['watchlist'].add(symbol.upper())
     save_state()
     logger.info(f"Symbol {symbol.upper()} added to watchlist for channel {channel_id}")
@@ -120,6 +134,7 @@ Note: The bot will automatically send recommendations for your watchlist every w
 /today - Get today's recommendations for your watchlist
 /backtest <symbol> <duration> - Run a backtest for a symbol (e.g., /backtest VNM 1y)
 /overview <symbol> - Get the overview of a symbol (e.g., /overview VNM)
+/set_time <time> - Set the recommendation time for your watchlist (e.g., /set_time 09:00)
 /help - Show this help message
 
 Durations for backtest:
@@ -233,6 +248,30 @@ def send_today_recommendations(message):
     else:
         bot.reply_to(message, "The watchlist is empty. Use /add <symbol> to add stocks.")
         logger.info(f"User {message.from_user.id} requested recommendations but watchlist is empty in channel {channel_id}")
+
+@bot.message_handler(commands=['set_time'])
+def set_recommendation_time(message):
+    try:
+        _, new_time = message.text.split(maxsplit=1)
+        # Validate the time format
+        datetime.strptime(new_time, "%H:%M")
+        channel_id = message.chat.id
+        
+        if channel_id not in bot_state['channels']:
+            bot_state['channels'][channel_id] = {
+                'watchlist': set(),
+                'recommendation_time': DEFAULT_RECOMMENDATION_TIME
+            }
+        
+        bot_state['channels'][channel_id]['recommendation_time'] = new_time
+        save_state()
+        
+        bot.reply_to(message, f"Daily recommendation time for this channel has been set to {new_time}")
+        logger.info(f"Daily recommendation time changed to {new_time} for channel {channel_id}")
+    except ValueError:
+        bot.reply_to(message, "Invalid time format. Please use HH:MM format (e.g., 08:00)")
+        logger.warning(f"User {message.from_user.id} failed to set recommendation time (invalid input)")
+
 
 # Function to get stock recommendation
 def get_recommendation(symbol):
@@ -398,7 +437,9 @@ def send_daily_recommendations():
     if now.weekday() < 5:
         for channel_id, channel_data in bot_state['channels'].items():
             watchlist = channel_data['watchlist']
-            if watchlist:
+            recommendation_time = channel_data['recommendation_time']
+            
+            if now.strftime("%H:%M") == recommendation_time and watchlist:
                 recommendations = [get_recommendation(symbol) for symbol in watchlist]
                 
                 # Sort recommendations
@@ -467,14 +508,13 @@ def overview_command(symbol):
         message += f"{key}: {value}\n"
     return message
 
-# Schedule the daily recommendations
-schedule.every().day.at("08:00").do(send_daily_recommendations)
-
 # Function to run scheduled tasks
 def run_scheduled_tasks():
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        now = datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
+        if now.minute == 0:  # Check every hour
+            send_daily_recommendations()
+        time.sleep(60)  # Sleep for 1 minute
 
 # Start the bot
 if __name__ == "__main__":
