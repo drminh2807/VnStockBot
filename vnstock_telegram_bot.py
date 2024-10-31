@@ -227,6 +227,9 @@ def send_today_recommendations(message):
     channel_id = message.chat.id
     watchlist = get_watchlist(channel_id)
     if watchlist:
+        # Get VNIndex data first
+        vnindex_info = get_vnindex_info()
+        
         recommendations = [get_recommendation(symbol) for symbol in watchlist]
         
         # Sort recommendations
@@ -234,8 +237,8 @@ def send_today_recommendations(message):
         sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
         hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
         
-        # Create message
-        message_text = "📊 Today's recommendations:\n\n"
+        # Create message with VNIndex
+        message_text = f"📊 Today's recommendations:\n\n{vnindex_info}\n\n"
         if buy_recs:
             message_text += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
         if sell_recs:
@@ -515,6 +518,26 @@ def run_scheduled_tasks():
         if now.minute == 0:  # Check every hour
             send_daily_recommendations()
         time.sleep(60)  # Sleep for 1 minute
+
+# Add new function to get VNIndex info
+def get_vnindex_info():
+    try:
+        vnindex = Vnstock().stock(symbol="VNINDEX", source='VCI')
+        data = vnindex.quote.history(start=(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'), 
+                                   end=datetime.now().strftime('%Y-%m-%d'))
+        
+        if data.empty:
+            return "VNIndex: No data available"
+
+        last_price = data['close'].iloc[-1]
+        last_change = data['close'].iloc[-1] - data['close'].iloc[-2]
+        last_change_percent = (last_change / data['close'].iloc[-2]) * 100
+
+        change_emoji = "🟩" if last_change_percent > 0 else "🟥" if last_change_percent < 0 else "🟨"
+        return f"VNIndex: {last_price:.2f} {change_emoji} ({last_change_percent:+.2f}%)"
+    except Exception as e:
+        logger.error(f"Error getting VNIndex data: {e}")
+        return "VNIndex: Data unavailable"
 
 # Start the bot
 if __name__ == "__main__":
