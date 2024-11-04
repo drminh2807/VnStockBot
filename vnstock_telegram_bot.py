@@ -227,24 +227,7 @@ def send_today_recommendations(message):
     channel_id = message.chat.id
     watchlist = get_watchlist(channel_id)
     if watchlist:
-        # Get VNIndex data first
-        vnindex_info = get_vnindex_info()
-        
-        recommendations = [get_recommendation(symbol) for symbol in watchlist]
-        
-        # Sort recommendations
-        buy_recs = [rec for rec in recommendations if rec[0] == "Buy"]
-        sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
-        hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
-        
-        # Create message with VNIndex
-        message_text = f"📊 Today's recommendations:\n\n{vnindex_info}\n\n"
-        if buy_recs:
-            message_text += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
-        if sell_recs:
-            message_text += "🔴 SELL:\n" + "\n".join([rec[1] for rec in sell_recs]) + "\n\n"
-        if hold_recs:
-            message_text += "🟡 HOLD:\n" + "\n".join([rec[1] for rec in hold_recs])
+        message_text = format_recommendations_message(watchlist)
         
         bot.reply_to(message, message_text)
         logger.info(f"Sent today's recommendations to channel {channel_id}")
@@ -443,21 +426,7 @@ def send_daily_recommendations():
             recommendation_time = channel_data['recommendation_time']
             
             if now.strftime("%H:%M") == recommendation_time and watchlist:
-                recommendations = [get_recommendation(symbol) for symbol in watchlist]
                 
-                # Sort recommendations
-                buy_recs = [rec for rec in recommendations if rec[0] == "Buy"]
-                sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
-                hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
-                
-                # Create message
-                message = "📊 Daily recommendations:\n\n"
-                if buy_recs:
-                    message += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
-                if sell_recs:
-                    message += "🔴 SELL:\n" + "\n".join([rec[1] for rec in sell_recs]) + "\n\n"
-                if hold_recs:
-                    message += "🟡 HOLD:\n" + "\n".join([rec[1] for rec in hold_recs])
                 
                 try:
                     bot.send_message(channel_id, message)
@@ -538,6 +507,26 @@ def get_vnindex_info():
     except Exception as e:
         logger.error(f"Error getting VNIndex data: {e}")
         return "VNIndex: Data unavailable"
+
+def format_recommendations_message(watchlist):
+    # Get VNIndex data first
+    vnindex_info = get_vnindex_info()
+    
+    recommendations = [get_recommendation(symbol) for symbol in watchlist]
+    
+    # Sort recommendations
+    buy_recs = [rec for rec in recommendations if rec[0] == "Buy"]
+    sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
+    hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
+    
+    # Create message with VNIndex
+    message_text = f"📊 Today's recommendations:\n\n{vnindex_info}\n\n"
+    if buy_recs:
+        message_text += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
+    if sell_recs:
+        message_text += "🔴 SELL:\n" + "\n".join([rec[1] for rec in sell_recs]) + "\n\n"
+    if hold_recs:
+        message_text += "🟡 HOLD:\n" + "\n".join([rec[1] for rec in hold_recs])
 
 # Start the bot
 if __name__ == "__main__":
