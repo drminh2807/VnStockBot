@@ -527,6 +527,7 @@ def format_recommendations_message(watchlist):
         message_text += "🔴 SELL:\n" + "\n".join([rec[1] for rec in sell_recs]) + "\n\n"
     if hold_recs:
         message_text += "🟡 HOLD:\n" + "\n".join([rec[1] for rec in hold_recs])
+    return message_text
 
 # Start the bot
 if __name__ == "__main__":
