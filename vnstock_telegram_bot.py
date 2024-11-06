@@ -240,7 +240,7 @@ def set_recommendation_time(message):
     try:
         _, new_time = message.text.split(maxsplit=1)
         # Validate the time format
-        datetime.strptime(new_time, "%H:%M")
+        valid_time = datetime.strptime(new_time, "%H:%M").strftime("%H:%M")
         channel_id = message.chat.id
         
         if channel_id not in bot_state['channels']:
@@ -249,11 +249,11 @@ def set_recommendation_time(message):
                 'recommendation_time': DEFAULT_RECOMMENDATION_TIME
             }
         
-        bot_state['channels'][channel_id]['recommendation_time'] = new_time
+        bot_state['channels'][channel_id]['recommendation_time'] = valid_time
         save_state()
         
-        bot.reply_to(message, f"Daily recommendation time for this channel has been set to {new_time}")
-        logger.info(f"Daily recommendation time changed to {new_time} for channel {channel_id}")
+        bot.reply_to(message, f"Daily recommendation time for this channel has been set to {valid_time}")
+        logger.info(f"Daily recommendation time changed to {valid_time} for channel {channel_id}")
     except ValueError:
         bot.reply_to(message, "Invalid time format. Please use HH:MM format (e.g., 08:00)")
         logger.warning(f"User {message.from_user.id} failed to set recommendation time (invalid input)")
@@ -268,7 +268,8 @@ def get_recommendation(symbol):
         return "No data available"
 
     last_price = data['close'].iloc[-1]
-    last_change_percent = (data['close'].iloc[-1] - data['close'].iloc[-2]) / data['close'].iloc[-2] * 100
+    last_change = data['close'].iloc[-1] - data['close'].iloc[-2]
+    last_change_percent = last_change / data['close'].iloc[-2] * 100
 
     recommendation = calculate_recommendation(data)
 
@@ -276,7 +277,7 @@ def get_recommendation(symbol):
     change_emoji = "🟪" if last_change_percent >= 7 else change_emoji
     change_emoji = "🟦" if last_change_percent <= -7 else change_emoji
 
-    return (recommendation, f"{symbol}: {last_price:.2f} {change_emoji} ({last_change_percent:.2f}%)")
+    return (recommendation, f"{symbol}: {last_price:.2f} {change_emoji} ({last_change:+.2f} {last_change_percent:+.2f}%)")
 
 def calculate_indicators(data):
     ma10 = talib.MA(data.close, timeperiod=10)
@@ -418,23 +419,18 @@ def run_backtest(symbol, duration):
 def send_daily_recommendations():
     vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')
     now = datetime.now(vietnam_tz)
-    
-    logger.info("Starting daily recommendations process")
-    if now.weekday() < 5:
-        for channel_id, channel_data in bot_state['channels'].items():
-            watchlist = channel_data['watchlist']
-            recommendation_time = channel_data['recommendation_time']
-            
-            if now.strftime("%H:%M") == recommendation_time and watchlist:
-                
-                
-                try:
-                    bot.send_message(channel_id, message)
-                    logger.info(f"Sent daily recommendations to channel {channel_id}")
-                except telebot.apihelper.ApiException as e:
-                    logger.error(f"Failed to send daily recommendations to channel {channel_id}: {e}")
-    else:
-        logger.info("Skipped daily recommendations (weekend)")
+    for channel_id, channel_data in bot_state['channels'].items():
+        watchlist = channel_data['watchlist']
+        recommendation_time = channel_data['recommendation_time']
+        
+        if now.strftime("%H:%M") == recommendation_time and watchlist:
+            try:
+                message = format_recommendations_message(watchlist)
+                bot.send_message(channel_id, message)
+                logger.info(f"Sent daily recommendations to channel {channel_id}")
+            except telebot.apihelper.ApiException as e:
+                bot.send_message(channel_id, f"Failed to send daily recommendations: {e}")
+                logger.error(f"Failed to send daily recommendations to channel {channel_id}: {e}")
 
 def overview_command(symbol):
     company = Vnstock().stock(symbol=symbol, source='TCBS').company
@@ -484,7 +480,7 @@ def overview_command(symbol):
 def run_scheduled_tasks():
     while True:
         now = datetime.now(pytz.timezone('Asia/Ho_Chi_Minh'))
-        if now.minute == 0:  # Check every hour
+        if now.weekday() < 5:
             send_daily_recommendations()
         time.sleep(60)  # Sleep for 1 minute
 
@@ -503,7 +499,7 @@ def get_vnindex_info():
         last_change_percent = (last_change / data['close'].iloc[-2]) * 100
 
         change_emoji = "🟩" if last_change_percent > 0 else "🟥" if last_change_percent < 0 else "🟨"
-        return f"VNIndex: {last_price:.2f} {change_emoji} ({last_change_percent:+.2f}%)"
+        return f"VNIndex: {last_price:.2f} {change_emoji} ({last_change:+.2f} {last_change_percent:+.2f}%)"
     except Exception as e:
         logger.error(f"Error getting VNIndex data: {e}")
         return "VNIndex: Data unavailable"
