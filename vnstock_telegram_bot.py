@@ -320,7 +320,7 @@ def backtest_stock(message):
         send_backtest_plot(bt, symbol, channel_id)
         logger.info(f"Đã gửi kết quả backtest cho {symbol} trong khoảng thời gian {duration} đến kênh {channel_id}")
     except ValueError:
-        bot.reply_to(message, "Vui lòng cung cấp mã cổ phiếu và khoảng thời gian. Cách sử dụng: /backtest <mã cổ phiếu> <khoảng thời gian>")
+        bot.reply_to(message, "Vui lòng cung cấp mã cổ phiếu và khoảng thời gian. Cách sử dụng: /backtest <mã cổ phi���u> <khoảng thời gian>")
         logger.warning(f"Người dùng {message.from_user.id} không thể chạy backtest (đầu vào không hợp lệ)")
 
 def beautify_backtest_results(result):
@@ -504,9 +504,57 @@ def get_vnindex_info():
         logger.error(f"Error getting VNIndex data: {e}")
         return "VNIndex: Data unavailable"
 
+# Add new function to get SJC gold price info
+def get_sjc_gold_info():
+    try:
+        from vnstock3.explorer.misc.gold_price import sjc_gold_price
+        gold_data = sjc_gold_price()
+        
+        # Get SJC 1L price (first row)
+        sjc_price = gold_data.iloc[0]
+        buy_price = sjc_price['buy_price']
+        sell_price = sjc_price['sell_price']
+        
+        return f"Vàng SJC: 💰 Mua: {buy_price} | Bán: {sell_price}"
+    except Exception as e:
+        logger.error(f"Error getting SJC gold price data: {e}")
+        return "Vàng SJC: Không có dữ liệu"
+
+# Add new function to get BTC price info
+def get_btc_info():
+    try:
+        crypto = Vnstock().crypto(symbol='BTC', source='MSN')
+        data = crypto.quote.history(
+            start=(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'),
+            end=datetime.now().strftime('%Y-%m-%d')
+        )
+        
+        if data.empty:
+            return "BTC: No data available"
+
+        last_price = data['close'].iloc[-1]
+        last_change = data['close'].iloc[-1] - data['close'].iloc[-2]
+        last_change_percent = (last_change / data['close'].iloc[-2]) * 100
+
+        # Format price to show in millions
+        price_in_millions = last_price / 1_000_000
+        change_in_millions = last_change / 1_000_000
+
+        change_emoji = "🟩" if last_change_percent > 0 else "🟥" if last_change_percent < 0 else "🟨"
+        return f"Bitcoin: {price_in_millions:.2f}M {change_emoji} ({change_in_millions:+.2f}M {last_change_percent:+.2f}%)"
+    except Exception as e:
+        logger.error(f"Error getting BTC data: {e}")
+        return "Bitcoin: Data unavailable"
+
 def format_recommendations_message(watchlist):
     # Get VNIndex data first
     vnindex_info = get_vnindex_info()
+    
+    # Get SJC gold price
+    gold_info = get_sjc_gold_info()
+    
+    # Get BTC price
+    btc_info = get_btc_info()
     
     recommendations = [get_recommendation(symbol) for symbol in watchlist]
     
@@ -515,8 +563,8 @@ def format_recommendations_message(watchlist):
     sell_recs = [rec for rec in recommendations if rec[0] == "Sell"]
     hold_recs = [rec for rec in recommendations if rec[0] == "Hold"]
     
-    # Create message with VNIndex
-    message_text = f"📊 Today's recommendations:\n\n{vnindex_info}\n\n"
+    # Create message with VNIndex, Gold price and BTC price
+    message_text = f"📊 Today's recommendations:\n\n{vnindex_info}\n{gold_info}\n{btc_info}\n\n"
     if buy_recs:
         message_text += "🟢 BUY:\n" + "\n".join([rec[1] for rec in buy_recs]) + "\n\n"
     if sell_recs:
