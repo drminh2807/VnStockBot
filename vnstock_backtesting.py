@@ -5,7 +5,7 @@ import pandas as pd
 symbol = "NVL"
 
 stock = Vnstock().stock(symbol=symbol, source='VCI')
-data_vnstock = stock.quote.history(start='2020-01-01', end='2024-09-01')
+data_vnstock = stock.quote.history(start='2022-07-05', end='2023-07-05')
 
 # data.rename(columns={'open':'Open','high': 'High', 'low':'Low','close': 'Close','volume': "Volume"}, errors="raise")
 data = data_vnstock.rename(str.capitalize, axis='columns')
