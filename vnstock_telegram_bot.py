@@ -1,6 +1,5 @@
 import telebot
 from vnstock3 import Vnstock
-import schedule
 import time
 from datetime import datetime, timedelta
 import pytz
@@ -11,8 +10,6 @@ import json
 import logging
 from backtesting import Backtest, Strategy
 import pandas as pd
-from bokeh.io import export_png
-from tabulate import tabulate
 
 # Load environment variables
 load_dotenv()
@@ -316,8 +313,7 @@ def backtest_stock(message):
         # Beautify the results
         beautified_results = beautify_backtest_results(result)
         bot.send_message(channel_id, beautified_results)
-        
-        send_backtest_plot(bt, symbol, channel_id)
+
         logger.info(f"Đã gửi kết quả backtest cho {symbol} trong khoảng thời gian {duration} đến kênh {channel_id}")
     except ValueError:
         bot.reply_to(message, "Vui lòng cung cấp mã cổ phiếu và khoảng thời gian. Cách sử dụng: /backtest <mã cổ phi���u> <khoảng thời gian>")
@@ -378,23 +374,6 @@ def beautify_backtest_results(result):
         f"{section_name}\n" + "\n".join([f"{metric}:   {value}" for metric, value in section_metrics])
         for section_name, section_metrics in sections
     ])
-
-
-def send_backtest_plot(bt, symbol, chat_id):
-    # Create a plot of the stats
-    fig = bt.plot(open_browser=False)
-    
-    # Save the plot as a PNG file
-    png_file = f"{symbol}_backtest.png"
-    export_png(fig, filename=png_file)
-
-    
-    # Send the PNG file to Telegram
-    with open(png_file, 'rb') as photo:
-        bot.send_photo(chat_id, photo)
-    
-    # Remove the temporary file
-    os.remove(png_file)
 
 def run_backtest(symbol, duration):
     # Convert duration to days
