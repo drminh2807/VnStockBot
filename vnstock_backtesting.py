@@ -1,6 +1,6 @@
 import talib
 from backtesting import Backtest, Strategy
-from vnstock3 import Vnstock
+from vnstock import Vnstock
 import pandas as pd
 symbol = "NVL"
 

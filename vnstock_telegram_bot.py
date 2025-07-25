@@ -1,5 +1,5 @@
 import telebot
-from vnstock3 import Vnstock
+from vnstock import Vnstock
 import time
 from datetime import datetime, timedelta
 import pytz
@@ -486,7 +486,7 @@ def get_vnindex_info():
 # Add new function to get SJC gold price info
 def get_sjc_gold_info():
     try:
-        from vnstock3.explorer.misc.gold_price import sjc_gold_price
+        from vnstock.explorer.misc.gold_price import sjc_gold_price
         gold_data = sjc_gold_price()
         
         # Get SJC 1L price (first row)

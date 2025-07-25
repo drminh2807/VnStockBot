@@ -45,6 +45,12 @@ This project is a Telegram bot that provides information about Vietnamese stocks
    ```
    Note: For other operating systems, please download ChromeDriver from the official website and add it to your system PATH.
 
+6. Install TA-Lib (for macOS users):
+   ```
+   brew install ta-lib
+   ```
+   Note: For other operating systems, please refer to the TA-Lib installation instructions for your platform.
+
 ## Running the Bot
 
 To run the VNStock Telegram Bot using PM2, follow these steps:

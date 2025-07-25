@@ -1,6 +1,6 @@
 import datetime
 import talib
-from vnstock3 import Vnstock
+from vnstock import Vnstock
 import datetime
 from mailjet_rest import Client
 import os
