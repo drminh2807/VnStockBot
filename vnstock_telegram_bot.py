@@ -478,7 +478,7 @@ def get_vnindex_info():
         last_change_percent = (last_change / data['close'].iloc[-2]) * 100
 
         change_emoji = "🟩" if last_change_percent > 0 else "🟥" if last_change_percent < 0 else "🟨"
-        return f"VNIndex: {last_price:.2f} {change_emoji} ({last_change:+.2f} {last_change_percent:+.2f}%)"
+        return f"VNIndex: {last_price:.0f} {change_emoji} ({last_change:+.0f} {last_change_percent:+.2f}%)"
     except Exception as e:
         logger.error(f"Error getting VNIndex data: {e}")
         return "VNIndex: Data unavailable"
