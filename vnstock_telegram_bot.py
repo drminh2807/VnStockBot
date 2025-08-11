@@ -467,7 +467,7 @@ def run_scheduled_tasks():
 def get_vnindex_info():
     try:
         vnindex = Vnstock().stock(symbol="VNINDEX", source='VCI')
-        data = vnindex.quote.history(start=(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'), 
+        data = vnindex.quote.history(start=(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'), 
                                    end=datetime.now().strftime('%Y-%m-%d'))
         
         if data.empty:
@@ -486,26 +486,29 @@ def get_vnindex_info():
 # Add new function to get SJC gold price info
 def get_sjc_gold_info():
     try:
-        from vnstock.explorer.misc.gold_price import sjc_gold_price
-        gold_data = sjc_gold_price()
+        from vnstock.explorer.misc.gold_price import btmc_goldprice
+        gold_data = btmc_goldprice()
         
         # Get SJC 1L price (first row)
         sjc_price = gold_data.iloc[0]
-        buy_price = sjc_price['buy_price']
-        sell_price = sjc_price['sell_price']
+        sell_price = f"{int(sjc_price['sell_price'])*10:,}".replace(",", ".") + " đ"
         
-        return f"Vàng SJC: 💰 Mua: {buy_price} | Bán: {sell_price}"
+        return f"Vàng: {sell_price}"
     except Exception as e:
         logger.error(f"Error getting SJC gold price data: {e}")
-        return "Vàng SJC: Không có dữ liệu"
+        return "Vàng: Không có dữ liệu"
 
 # Add new function to get BTC price info
 def get_btc_info():
     try:
         crypto = Vnstock().crypto(symbol='BTC', source='MSN')
+        from vnstock.explorer.misc.exchange_rate import vcb_exchange_rate
+        today = datetime.now().strftime('%Y-%m-%d'),
+        rate = vcb_exchange_rate(day=today)
         data = crypto.quote.history(
-            start=(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'),
-            end=datetime.now().strftime('%Y-%m-%d')
+            start=(datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
+            end=today,
+            interval='1D'
         )
         
         if data.empty:
@@ -516,11 +519,11 @@ def get_btc_info():
         last_change_percent = (last_change / data['close'].iloc[-2]) * 100
 
         # Format price to show in millions
-        price_in_millions = last_price / 1_000_000
-        change_in_millions = last_change / 1_000_000
+        price_in_usd = last_price / rate
+        change_in_usd = last_change / rate
 
         change_emoji = "🟩" if last_change_percent > 0 else "🟥" if last_change_percent < 0 else "🟨"
-        return f"Bitcoin: {price_in_millions:.2f}M {change_emoji} ({change_in_millions:+.2f}M {last_change_percent:+.2f}%)"
+        return f"Bitcoin: {price_in_usd:.2f} USD {change_emoji} ({change_in_usd:+.2f} USD {last_change_percent:+.2f}%)"
     except Exception as e:
         logger.error(f"Error getting BTC data: {e}")
         return "Bitcoin: Data unavailable"
